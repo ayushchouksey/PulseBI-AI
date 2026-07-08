@@ -1,0 +1,1 @@
+{"version":3,"file":"MetadataService.js","sourceRoot":"","sources":["../../src/services/MetadataService.ts"],"names":[],"mappings":"AAKA,MAAM,OAAO,eAAe;IAE1B;;;;;;;;OAQG;IACI,KAAK,CAAC,cAAc,CACzB,SAAiB,EACjB,QAA0B;QAQ1B,OAAO;YAEL,SAAS;YAET,QAAQ;YAER,UAAU,EAAE,IAAI;YAEhB,OAAO,EAAE,IAAI;SAEd,CAAC;IAEJ,CAAC;CAEF"}

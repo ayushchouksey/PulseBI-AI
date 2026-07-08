@@ -1,0 +1,22 @@
+import { Router } from "express";
+import uploadRoutes from "./upload.routes.js";
+import metadataRoutes from "./metadata.routes.js";
+import statisticsRoutes from "./statistics.routes.js";
+import dashboardRoutes from "./dashboard.routes.js";
+import aiRoutes from "./ai.routes.js";
+import exportRoutes from "./export.routes.js";
+import sessionRoutes from "./session.routes.js";
+import configRoutes from "./config.routes.js";
+import healthRoutes from "./health.routes.js";
+const router = Router();
+router.use("/upload", uploadRoutes);
+router.use("/metadata", metadataRoutes);
+router.use("/statistics", statisticsRoutes);
+router.use("/dashboard", dashboardRoutes);
+router.use("/ai", aiRoutes);
+router.use("/export", exportRoutes);
+router.use("/session", sessionRoutes);
+router.use("/config", configRoutes);
+router.use("/health", healthRoutes);
+export default router;
+//# sourceMappingURL=index.js.map

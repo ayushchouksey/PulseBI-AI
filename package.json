@@ -1,0 +1,30 @@
+{
+  "name": "pulsebi-ai",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.17.0",
+  "scripts": {
+    "dev": "pnpm --filter @pulsebi/server dev",
+    "dev:server": "pnpm --filter @pulsebi/server dev",
+    "dev:client": "pnpm --filter @pulsebi/client dev",
+
+    "build": "pnpm -r build",
+    "build:server": "pnpm --filter @pulsebi/server build",
+    "build:client": "pnpm --filter @pulsebi/client build",
+
+    "lint": "pnpm -r lint",
+    "format": "prettier --write .",
+
+    "clean": "pnpm -r clean"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

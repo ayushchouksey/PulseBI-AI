@@ -368,6 +368,8 @@ The documentation is comprehensive for product vision and architecture but has g
 | Product name | `01_project_overview.md` uses **InsightFlow AI**; all other docs use **PulseBI AI** |
 | File naming | `04_Product_Requirements.md` vs header "04_Functional_Requirements"; `10_Business_Insight_Engine.md` vs header "10_Statistics_Engine"; `12_AI_Intent_Engine.md` vs header "12_Natural_Language_Processing_Layer" |
 | Business roles | Functional requirements list Metric/Category/Date/Identifier/Text/Ignore; Core Data Models add dimension, location, category as separate roles |
+| Directory Structure | `05_System_Architecture.md` specifies `src/features/`, `src/shared/`, and `src/store/`, whereas `14_Frontend_Architecture.md` and `19_Project_Folder_Structure.md` specify `src/modules/`, `src/components/`, and `src/stores/` |
+| Ollama Config | `15_Backend_Architecture.md` specifies `OLLAMA_BASE_URL`, whereas `26_Backend_Execution_Guide.md` specifies `OLLAMA_URL` |
 
 ### Underspecified Implementation Details
 
@@ -443,6 +445,38 @@ The documentation is comprehensive for product vision and architecture but has g
 | **Bulk metadata edit** | Mentioned in UI design system; not in functional requirements |
 | **Widget drag/resize** | Dashboard grid supports it; unclear if user-initiated or AI-only in v1 |
 | **Upload during dashboard** | "Upload another dataset at any time" — full flow reset behavior unspecified |
+
+---
+
+## Execution Roadmap & Checklist
+
+### High-Level Execution Sequence (Milestones M1–M17)
+PulseBI AI development follows 17 strict vertical milestones defined in [25_Execution_Roadmap.md](file:///Users/ayush/project/BI%20Dashboard/PulseBI-AI/docs/25_Execution_Roadmap.md):
+- **Infrastructure (M1–M4)**: Repository workspaces, backend and frontend framework foundations, shared types and utility packages.
+- **Ingestion & Metadata (M5–M7)**: CSV upload API, data validation/parsing, metadata extraction engine, and confirmation UI.
+- **Analytics & Orchestration (M8–M10)**: deterministic Statistics Engine, Dashboard Orchestration Engine, and Plotly-based grid layouts.
+- **Conversational Intelligence (M11–M12)**: Ollama integration, context builders, NLP intent classification, and chat panel widget action triggers.
+- **Exports & Optimizations (M13–M14)**: Multiformat Export Engine (PDF, PNG, SVG, CSV, Excel) and client rendering optimizations (lazy-loading, table virtualization).
+- **Validation & Release (M15–M17)**: Error/empty/loading states validation, documentation synchronizing, and final repository packaging.
+
+### Backend Execution Path (Milestones B1–B16)
+The backend infrastructure is built in 16 incremental milestones defined in [26_Backend_Execution_Guide.md](file:///Users/ayush/project/BI%20Dashboard/PulseBI-AI/docs/26_Backend_Execution_Guide.md):
+- **Workspaces & Environment (B1–B2)**: Package definitions, TypeScript compiler config, and Zod env schema validation (PORT, NODE_ENV, LOG_LEVEL, OLLAMA_URL, OLLAMA_MODEL, limits).
+- **Architecture Layers & Utilities (B3–B8)**: Shared constants, domain type interfaces, request/response models, custom logger, request ID generation, error handler, and Zod validators.
+- **Engines, Providers & Services (B9–B13)**: Ollama provider wrappers, mock-only engine stubs (DataIngestion, DataQuality, Metadata, Statistics, Dashboard, NLP, Export), orchestrating services, and standard REST route endpoints under `/api/v1`.
+- **Boots & Verification (B14–B16)**: Bootstrap app setup and health/configuration status endpoint implementations (`GET /health`, `GET /config`).
+
+### Frontend Execution Path (Milestones F1–F21)
+The frontend UI is built in 21 incremental milestones defined in [27_Frontend_Execution_Guide.md](file:///Users/ayush/project/BI%20Dashboard/PulseBI-AI/docs/27_Frontend_Execution_Guide.md):
+- **Boilerplate & Theme (F1–F4)**: React 19 setup, global spacing/radius/color design tokens, layout templates, and routes configuration.
+- **State & Client API (F5–F7)**: Zustand stores (Upload, Metadata, Dashboard, Filter, Chat, UI), Axios client interceptors, and reusable shared components (dialogs, tables, skeletons).
+- **Ingestion & Grid UI (F8–F14)**: Drag & Drop upload cards, scrollable metadata modal, dashboard grids (React Grid Layout), KPI cards, Plotly charts integration, and dynamic data tables.
+- **Conversational UI & Exports (F15–F21)**: Collapsible chat side-panel, live state rendering for AI-triggered actions, asset export handlers, responsive checks, and accessibility focus management.
+
+### Quality Assurance & Release Gate
+The release quality checklist outlined in [28_Development_Checklist.md](file:///Users/ayush/project/BI%20Dashboard/PulseBI-AI/docs/28_Development_Checklist.md) mandates:
+- **E2E Integration Validation**: Successful execution of the full user flow (Upload CSV -> confirm metadata -> verify KPI/Chart widgets -> query via search/chat -> apply global filters -> export PDF/PNG/CSV).
+- **Compliance Standards**: 0 console/TypeScript compilation/ESLint errors, keyboard-navigable UI elements, and WCAG AA contrast ratios.
 
 ---
 

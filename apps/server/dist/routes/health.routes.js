@@ -1,0 +1,6 @@
+import { Router } from "express";
+import { HealthController } from "../controllers/HealthController.js";
+const router = Router();
+router.get("/", HealthController.getHealth);
+export default router;
+//# sourceMappingURL=health.routes.js.map
