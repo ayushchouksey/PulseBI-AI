@@ -2,18 +2,18 @@ import { z } from 'zod';
 export declare const exportValidator: z.ZodObject<{
     dashboardId: z.ZodUUID;
     format: z.ZodEnum<{
-        png: "png";
-        svg: "svg";
         pdf: "pdf";
         csv: "csv";
+        png: "png";
+        svg: "svg";
         xlsx: "xlsx";
     }>;
 }, z.core.$strip>;
 export declare const exportDashboardSchema: z.ZodObject<{
     format: z.ZodEnum<{
+        pdf: "pdf";
         png: "png";
         svg: "svg";
-        pdf: "pdf";
     }>;
     target: z.ZodEnum<{
         dashboard: "dashboard";

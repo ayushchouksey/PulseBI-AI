@@ -13,6 +13,8 @@ export declare class DatasetRepository {
     }): StoredDataset;
     findById(datasetId: string): StoredDataset | undefined;
     findAll(): StoredDataset[];
+    exists(datasetId: string): boolean;
     updateMetadata(datasetId: string, metadata: ColumnMetadata[], statistics: DatasetStatistics): StoredDataset | undefined;
     delete(datasetId: string): boolean;
+    clear(): void;
 }

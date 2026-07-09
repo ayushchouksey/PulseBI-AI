@@ -16,7 +16,9 @@ export class ExportService {
     new ExportEngine();
 
   public async exportDashboard(
-    datasetId: string
+    datasetId: string,
+    format: "json" | "pdf" | "csv"
+
   ) {
 
     const stored =
@@ -41,9 +43,13 @@ export class ExportService {
 
       });
 
-    return this.exportEngine.execute(
-      dashboard
-    );
+      return this.exportEngine.execute({
+
+        dashboard,
+      
+        format
+      
+      });
 
   }
 

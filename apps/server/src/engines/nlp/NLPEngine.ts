@@ -8,54 +8,87 @@ import type {
   Engine,
 } from "../../core/engine.interface.js";
 
+export interface NLPInput {
+
+  dataset: Dataset;
+
+  metadata: ColumnMetadata[];
+
+  statistics: DatasetStatistics;
+
+  question: string;
+
+}
+
+export interface NLPResponse {
+
+  intent: string;
+
+  answer: string;
+
+  widget?: string;
+
+}
+
 export class NLPEngine
-  implements Engine<
-    {
-      dataset: Dataset;
-      metadata: ColumnMetadata[];
-      statistics: DatasetStatistics;
-      question: string;
-    },
-    unknown
-  >
+  implements Engine<NLPInput, NLPResponse>
 {
 
-  execute(input: {
-
-    dataset: Dataset;
-
-    metadata: ColumnMetadata[];
-
-    statistics: DatasetStatistics;
-
-    question: string;
-
-  }) {
+  execute(
+    input: NLPInput
+  ): NLPResponse {
 
     const question =
       input.question.toLowerCase();
 
-    if (question.includes("kpi")) {
+    if (
+      question.includes("revenue") &&
+      question.includes("category")
+    ) {
 
       return {
 
-        type: "kpis",
+        intent: "category-analysis",
+
+        widget: "bar",
 
         answer:
-          input.statistics.kpis,
+          "Showing Revenue grouped by Category.",
 
       };
 
     }
 
-    if (question.includes("column")) {
+    if (
+      question.includes("trend") ||
+      question.includes("monthly")
+    ) {
 
       return {
 
-        type: "metadata",
+        intent: "trend",
+
+        widget: "line",
 
         answer:
-          input.metadata,
+          "Showing monthly trend.",
+
+      };
+
+    }
+
+    if (
+      question.includes("top")
+    ) {
+
+      return {
+
+        intent: "ranking",
+
+        widget: "table",
+
+        answer:
+          "Showing top ranked values.",
 
       };
 
@@ -63,20 +96,10 @@ export class NLPEngine
 
     return {
 
-      type: "summary",
+      intent: "general",
 
-      answer: {
-
-        rows:
-          input.dataset.totalRows,
-
-        columns:
-          input.dataset.totalColumns,
-
-        kpis:
-          input.statistics.kpis.length,
-
-      },
+      answer:
+        `Dataset contains ${input.dataset.totalRows} rows and ${input.dataset.totalColumns} columns.`,
 
     };
 

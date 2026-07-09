@@ -79,6 +79,17 @@ import type {
       );
   
     }
+
+    public exists(
+        datasetId: string
+      ): boolean {
+      
+        return this.datasets.has(
+          datasetId
+        );
+      
+      }
+      
   
     public updateMetadata(
   
@@ -114,5 +125,11 @@ import type {
       return this.datasets.delete(datasetId);
   
     }
+
+    public clear(): void {
+
+        this.datasets.clear();
+      
+      }
   
   }

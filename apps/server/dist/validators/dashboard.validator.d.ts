@@ -21,9 +21,9 @@ export declare const createWidgetSchema: z.ZodObject<{
         text: "text";
         filter: "filter";
         table: "table";
-        summary: "summary";
         KPI: "KPI";
         chart: "chart";
+        summary: "summary";
     }>;
     chartType: z.ZodOptional<z.ZodString>;
     dataSource: z.ZodString;

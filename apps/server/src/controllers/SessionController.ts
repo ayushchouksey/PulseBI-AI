@@ -3,6 +3,9 @@ import type {
   Response,
 } from "express";
 
+import { DatasetRepository } from "../repositories/index.js";
+
+
 import { buildSuccessResponse } from "../utils/responseBuilder.js";
 
 export class SessionController {
@@ -30,5 +33,18 @@ export class SessionController {
     );
 
   };
+
+  private readonly repository =
+    DatasetRepository.getInstance();
+
+  getSession(
+    datasetId: string
+  ) {
+
+    return this.repository.findById(
+      datasetId
+    );
+
+  }
 
 }

@@ -8,11 +8,8 @@ const controller =
   new ExportController();
 
 router.get(
-
-  "/:datasetId",
-
+  "/:datasetId/:format",
   controller.export
-
 );
 
 export default router;

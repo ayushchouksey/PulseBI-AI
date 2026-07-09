@@ -1,4 +1,8 @@
 import type { Engine } from "../../core/engine.interface.js";
-export declare class ExportEngine implements Engine<unknown, Buffer> {
-    execute(dashboard: unknown): Buffer;
+export interface ExportInput {
+    dashboard: unknown;
+    format: "json" | "pdf" | "csv";
+}
+export declare class ExportEngine implements Engine<ExportInput, Buffer> {
+    execute(input: ExportInput): Buffer;
 }

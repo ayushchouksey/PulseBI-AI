@@ -7,12 +7,9 @@ const router: Router = Router();
 const controller =
   new StatisticsController();
 
-router.get(
-
-  "/:datasetId",
-
-  controller.getStatistics
-
-);
+  router.get(
+    "/:datasetId",
+    controller.get
+  );
 
 export default router;

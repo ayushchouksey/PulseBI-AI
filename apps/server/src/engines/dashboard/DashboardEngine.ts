@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type {
   Dataset,
   ColumnMetadata,
@@ -5,17 +7,17 @@ import type {
 } from "@pulsebi/shared-types";
 
 import type {
-  Engine,
-} from "../../core/engine.interface.js";
-
-import type {
   DashboardDefinition,
 } from "./types.js";
 
 import { KPIWidgetBuilder } from "./KPIWidgetBuilder.js";
-
 import { ChartRecommendationEngine } from "./ChartRecommendationEngine.js";
+import { FilterBuilder } from "./FilterBuilder.js";
+import { LayoutBuilder } from "./LayoutBuilder.js";
 
+import type {
+  Engine,
+} from "../../core/engine.interface.js";
 
 export class DashboardEngine
   implements Engine<
@@ -28,13 +30,17 @@ export class DashboardEngine
   >
 {
 
-  private readonly kpiBuilder =
+  private readonly kpis =
     new KPIWidgetBuilder();
 
-
-  private readonly chartEngine =
+  private readonly charts =
     new ChartRecommendationEngine();
 
+  private readonly filters =
+    new FilterBuilder();
+
+  private readonly layout =
+    new LayoutBuilder();
 
   execute(input: {
 
@@ -46,37 +52,41 @@ export class DashboardEngine
 
   }): DashboardDefinition {
 
+    const widgets = [
 
-    const kpiWidgets =
-      this.kpiBuilder.execute(
+      ...this.kpis.execute(
         input.statistics.kpis
-      );
+      ),
+    
+      ...this.charts.execute(
+        input.metadata
+      ),
+    
+    ];
 
+    const layout =
+      this.layout.execute(widgets);
 
-    const chartWidgets =
-      this.chartEngine.execute(
+    const filters =
+      this.filters.execute(
         input.metadata
       );
 
-
     return {
 
-      id:
-        `dashboard-${input.dataset.id}`,
+      id: randomUUID(),
 
       title:
-        `${input.dataset.fileName} Dashboard`,
+        "AI Generated Dashboard",
 
       description:
-        "Automatically generated analytics dashboard",
+        "Automatically generated dashboard",
 
-      widgets: [
+      widgets,
 
-        ...kpiWidgets,
+      filters,
 
-        ...chartWidgets,
-
-      ],
+      layout,
 
     };
 

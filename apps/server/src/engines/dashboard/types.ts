@@ -1,12 +1,14 @@
+export interface DashboardDefinition {
 
-  
-  export interface DashboardDefinition {
-  
     id: string;
   
     title: string;
   
     description: string;
+  
+    layout: DashboardLayout;
+  
+    filters: DashboardFilter[];
   
     widgets: DashboardWidget[];
   
@@ -25,7 +27,21 @@
       | "pie"
       | "table";
   
+    position: WidgetPosition;
+  
     config: WidgetConfig;
+  
+  }
+  
+  export interface WidgetPosition {
+  
+    x: number;
+  
+    y: number;
+  
+    w: number;
+  
+    h: number;
   
   }
   
@@ -36,5 +52,21 @@
     yAxis?: string;
   
     aggregation?: string;
+  
+  }
+  
+  export interface DashboardFilter {
+  
+    field: string;
+  
+    type: "select" | "date";
+  
+  }
+  
+  export interface DashboardLayout {
+  
+    columns: number;
+  
+    rowHeight: number;
   
   }

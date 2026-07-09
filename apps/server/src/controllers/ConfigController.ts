@@ -16,7 +16,12 @@ export class ConfigController {
 
       upload: config.upload,
 
-      version: "1.0.0",
+      server: {
+
+        port:
+          config.port,
+
+      },
 
     });
 

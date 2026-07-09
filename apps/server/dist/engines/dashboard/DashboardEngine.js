@@ -1,19 +1,27 @@
+import { randomUUID } from "node:crypto";
 import { KPIWidgetBuilder } from "./KPIWidgetBuilder.js";
 import { ChartRecommendationEngine } from "./ChartRecommendationEngine.js";
+import { FilterBuilder } from "./FilterBuilder.js";
+import { LayoutBuilder } from "./LayoutBuilder.js";
 export class DashboardEngine {
-    kpiBuilder = new KPIWidgetBuilder();
-    chartEngine = new ChartRecommendationEngine();
+    kpis = new KPIWidgetBuilder();
+    charts = new ChartRecommendationEngine();
+    filters = new FilterBuilder();
+    layout = new LayoutBuilder();
     execute(input) {
-        const kpiWidgets = this.kpiBuilder.execute(input.statistics.kpis);
-        const chartWidgets = this.chartEngine.execute(input.metadata);
+        const widgets = [
+            ...this.kpis.execute(input.statistics.kpis),
+            ...this.charts.execute(input.metadata),
+        ];
+        const layout = this.layout.execute(widgets);
+        const filters = this.filters.execute(input.metadata);
         return {
-            id: `dashboard-${input.dataset.id}`,
-            title: `${input.dataset.fileName} Dashboard`,
-            description: "Automatically generated analytics dashboard",
-            widgets: [
-                ...kpiWidgets,
-                ...chartWidgets,
-            ],
+            id: randomUUID(),
+            title: "AI Generated Dashboard",
+            description: "Automatically generated dashboard",
+            widgets,
+            filters,
+            layout,
         };
     }
 }

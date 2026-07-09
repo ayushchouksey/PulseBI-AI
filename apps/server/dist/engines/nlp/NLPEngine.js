@@ -1,25 +1,32 @@
 export class NLPEngine {
     execute(input) {
         const question = input.question.toLowerCase();
-        if (question.includes("kpi")) {
+        if (question.includes("revenue") &&
+            question.includes("category")) {
             return {
-                type: "kpis",
-                answer: input.statistics.kpis,
+                intent: "category-analysis",
+                widget: "bar",
+                answer: "Showing Revenue grouped by Category.",
             };
         }
-        if (question.includes("column")) {
+        if (question.includes("trend") ||
+            question.includes("monthly")) {
             return {
-                type: "metadata",
-                answer: input.metadata,
+                intent: "trend",
+                widget: "line",
+                answer: "Showing monthly trend.",
+            };
+        }
+        if (question.includes("top")) {
+            return {
+                intent: "ranking",
+                widget: "table",
+                answer: "Showing top ranked values.",
             };
         }
         return {
-            type: "summary",
-            answer: {
-                rows: input.dataset.totalRows,
-                columns: input.dataset.totalColumns,
-                kpis: input.statistics.kpis.length,
-            },
+            intent: "general",
+            answer: `Dataset contains ${input.dataset.totalRows} rows and ${input.dataset.totalColumns} columns.`,
         };
     }
 }

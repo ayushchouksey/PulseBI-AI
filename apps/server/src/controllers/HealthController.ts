@@ -10,13 +10,18 @@ export class HealthController {
     res: Response
   ) => {
 
-    return res.json({
+    res.json({
 
       status: "UP",
 
-      service: "PulseBI AI",
+      version: "1.0.0",
 
-      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+
+      memory: process.memoryUsage(),
+
+      timestamp:
+        new Date().toISOString(),
 
     });
 

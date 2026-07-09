@@ -3,7 +3,9 @@ export class ConfigController {
     get = (_req, res) => {
         return res.json({
             upload: config.upload,
-            version: "1.0.0",
+            server: {
+                port: config.port,
+            },
         });
     };
 }

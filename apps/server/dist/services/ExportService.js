@@ -5,7 +5,7 @@ export class ExportService {
     repository = DatasetRepository.getInstance();
     dashboardEngine = new DashboardEngine();
     exportEngine = new ExportEngine();
-    async exportDashboard(datasetId) {
+    async exportDashboard(datasetId, format) {
         const stored = this.repository.findById(datasetId);
         if (!stored) {
             throw new Error("Dataset not found.");
@@ -15,7 +15,10 @@ export class ExportService {
             metadata: stored.metadata,
             statistics: stored.statistics,
         });
-        return this.exportEngine.execute(dashboard);
+        return this.exportEngine.execute({
+            dashboard,
+            format
+        });
     }
 }
 //# sourceMappingURL=ExportService.js.map

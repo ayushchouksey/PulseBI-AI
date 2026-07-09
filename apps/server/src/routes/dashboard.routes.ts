@@ -14,5 +14,12 @@ router.get(
   controller.getDashboard
 
 );
+router.post(
+
+  "/:datasetId/regenerate",
+
+  controller.getDashboard
+
+);
 
 export default router;

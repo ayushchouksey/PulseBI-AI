@@ -26,6 +26,9 @@ export class DatasetRepository {
     findAll() {
         return Array.from(this.datasets.values());
     }
+    exists(datasetId) {
+        return this.datasets.has(datasetId);
+    }
     updateMetadata(datasetId, metadata, statistics) {
         const stored = this.datasets.get(datasetId);
         if (!stored) {
@@ -37,6 +40,9 @@ export class DatasetRepository {
     }
     delete(datasetId) {
         return this.datasets.delete(datasetId);
+    }
+    clear() {
+        this.datasets.clear();
     }
 }
 //# sourceMappingURL=DatasetRepository.js.map
