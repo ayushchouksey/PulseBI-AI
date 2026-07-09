@@ -1,78 +1,60 @@
-import { DashboardModel } from '@pulsebi/shared-types';
-import { v4 as uuidv4 } from 'uuid';
-import { DashboardEngine } from '../engines/dashboard/DashboardEngine.js';
+import { DatasetRepository } from "../repositories/index.js";
 
+import { DashboardEngine } from "../engines/dashboard/index.js";
+import type { DashboardDefinition } from "../engines/dashboard/types.js";
 export class DashboardService {
-  private engine = new DashboardEngine();
-  public async generateInitialDashboard(datasetId: string = uuidv4(), _metadata?: any): Promise<DashboardModel> {
-    const dashboardId = uuidv4();
-    await this.engine.generate({}, {});
-    return {
-      dashboardId,
-      datasetId,
-      title: 'Sales Overview Dashboard',
-      description: 'Auto Generated Business Intelligence Dashboard',
-      createdAt: new Date().toISOString(),
-      widgets: [
-        {
-          id: uuidv4(),
-          title: 'Total Revenue',
-          type: 'kpi',
-          position: { x: 0, y: 0, w: 3, h: 2 },
-          chartType: 'line',
-          dataSource: 'statistics',
-          configuration: {
-            value: 542000,
-            format: 'currency',
-            change: '+18.5%',
-            trend: 'up',
-          },
-          exportable: true,
-          visible: true,
-        },
-        {
-          id: uuidv4(),
-          title: 'Monthly Revenue Trend',
-          type: 'chart',
-          chartType: 'line',
-          position: { x: 0, y: 2, w: 12, h: 4 },
-          dataSource: 'trend',
-          configuration: {
-            xAxis: 'OrderDate',
-            yAxis: 'Revenue',
-          },
-          exportable: true,
-          visible: true,
-        },
-      ],
-      filters: [
-        {
-          id: uuidv4(),
-          field: 'Category',
-          type: 'dropdown',
-          values: ['Electronics', 'Furniture', 'Clothing'],
-          selected: [],
-        },
-      ],
-      layout: {},
-      theme: 'default',
-    };
+
+  private readonly repository =
+    DatasetRepository.getInstance();
+
+  private readonly dashboardEngine =
+    new DashboardEngine();
+
+  public async generateDashboard(
+    datasetId: string
+  ) : Promise<DashboardDefinition>  {
+
+    const stored =
+      this.repository.findById(datasetId);
+
+    if (!stored) {
+
+      throw new Error(
+        "Dataset not found."
+      );
+
+    }
+
+    return this.dashboardEngine.execute({
+
+      dataset: stored.dataset,
+
+      metadata: stored.metadata,
+
+      statistics: stored.statistics,
+
+    });
+
   }
 
-  public async generateDashboard(_datasetId: string): Promise<DashboardModel> {
-    return this.generateInitialDashboard(_datasetId);
+  public async getDashboard(
+    datasetId: string
+  ) {
+
+    return this.generateDashboard(
+      datasetId
+    );
+
   }
 
-  public async updateDashboard(dashboardId: string, updateData: any): Promise<DashboardModel> {
-    return {
-      dashboardId,
-      title: updateData.title || 'Updated Dashboard',
-      description: 'Auto Generated Business Intelligence Dashboard',
-      createdAt: new Date().toISOString(),
-      widgets: updateData.widgets || [],
-      filters: updateData.filters || [],
-      layout: updateData.layout || {},
-      theme: updateData.theme || 'default',
-    };
+  public async regenerateDashboard(
+    datasetId: string
+  ) {
+
+    return this.generateDashboard(
+      datasetId
+    );
+
   }
+
 }

@@ -1,10 +1,25 @@
-import type { Request, Response } from "express";
-import { ConfigService } from "../services/ConfigService.js";
+import type {
+  Request,
+  Response,
+} from "express";
+
+import { config } from "../config/index.js";
 
 export class ConfigController {
-  static async getConfig(_req: Request, res: Response) {
-    const config = await ConfigService.getPublicConfig();
 
-    res.json(config);
-  }
+  public get = (
+    _req: Request,
+    res: Response
+  ) => {
+
+    return res.json({
+
+      upload: config.upload,
+
+      version: "1.0.0",
+
+    });
+
+  };
+
 }

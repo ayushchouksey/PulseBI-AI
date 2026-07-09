@@ -1,31 +1,38 @@
-import { NLPEngine } from "../engines/nlp/NLPEngine.js";
-import { OllamaProvider } from "../providers/ollama.provider.js";
+import { DatasetRepository } from "../repositories/index.js";
+
+import { NLPEngine } from "../engines/nlp/index.js";
 
 export class AIService {
 
-  private engine = new NLPEngine();
+  private readonly repository =
+    DatasetRepository.getInstance();
 
-  private provider = new OllamaProvider();
+  private readonly engine =
+    new NLPEngine();
 
-  public async askQuestion(
+  public async ask(
+    datasetId: string,
     question: string
   ) {
 
-    await this.engine.process(question);
+    const stored =
+      this.repository.findById(datasetId);
 
-    const answer =
-      await this.provider.answerQuestion(
-        question,
-        {} as any
-      );
+    if (!stored) {
+      throw new Error("Dataset not found.");
+    }
 
-    return {
+    return this.engine.execute({
 
-      answer,
+      dataset: stored.dataset,
 
-      actions: []
+      metadata: stored.metadata,
 
-    };
+      statistics: stored.statistics,
+
+      question,
+
+    });
 
   }
 

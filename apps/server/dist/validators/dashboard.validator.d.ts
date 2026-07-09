@@ -20,10 +20,10 @@ export declare const createWidgetSchema: z.ZodObject<{
     type: z.ZodEnum<{
         text: "text";
         filter: "filter";
-        chart: "chart";
         table: "table";
-        KPI: "KPI";
         summary: "summary";
+        KPI: "KPI";
+        chart: "chart";
     }>;
     chartType: z.ZodOptional<z.ZodString>;
     dataSource: z.ZodString;

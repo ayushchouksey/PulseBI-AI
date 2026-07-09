@@ -1,10 +1,25 @@
-import type { Request, Response } from "express";
-import { HealthService } from "../services/HealthService.js";
+import type {
+  Request,
+  Response,
+} from "express";
 
 export class HealthController {
-  static async getHealth(_req: Request, res: Response) {
-    const result = await HealthService.getHealth();
 
-    res.json(result);
-  }
+  public health = (
+    _req: Request,
+    res: Response
+  ) => {
+
+    return res.json({
+
+      status: "UP",
+
+      service: "PulseBI AI",
+
+      timestamp: new Date().toISOString(),
+
+    });
+
+  };
+
 }

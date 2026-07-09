@@ -1,7 +1,8 @@
-import { DashboardModel } from '@pulsebi/shared-types';
+import type { DashboardDefinition } from "../engines/dashboard/types.js";
 export declare class DashboardService {
-    private engine;
-    generateInitialDashboard(datasetId?: string, _metadata?: any): Promise<DashboardModel>;
-    generateDashboard(_datasetId: string): Promise<DashboardModel>;
-    updateDashboard(dashboardId: string, updateData: any): Promise<DashboardModel>;
+    private readonly repository;
+    private readonly dashboardEngine;
+    generateDashboard(datasetId: string): Promise<DashboardDefinition>;
+    getDashboard(datasetId: string): Promise<DashboardDefinition>;
+    regenerateDashboard(datasetId: string): Promise<DashboardDefinition>;
 }

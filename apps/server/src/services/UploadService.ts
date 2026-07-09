@@ -3,6 +3,8 @@ import { DataQualityEngine } from "../engines/data-quality/index.js";
 import { MetadataEngine } from "../engines/metadata/index.js";
 import { StatisticsEngine } from "../engines/statistics/index.js";
 
+import { DatasetRepository } from "../repositories/index.js";
+
 import type { UploadResponse } from "./types.js";
 
 export class UploadService {
@@ -19,43 +21,22 @@ export class UploadService {
   private readonly statisticsEngine =
     new StatisticsEngine();
 
+    private readonly datasetRepository =
+    DatasetRepository.getInstance();
+
   public async processUpload(
     file: Express.Multer.File
   ): Promise<UploadResponse> {
 
-    /**
-     * ---------------------------------------
-     * Step 1
-     * Parse & Normalize uploaded CSV
-     * ---------------------------------------
-     */
     const dataset =
       await this.ingestionEngine.execute(file);
 
-    /**
-     * ---------------------------------------
-     * Step 2
-     * Run Data Quality Analysis
-     * ---------------------------------------
-     */
     const quality =
       this.qualityEngine.execute(dataset);
 
-    /**
-     * ---------------------------------------
-     * Step 3
-     * Generate Metadata
-     * ---------------------------------------
-     */
     const metadata =
       this.metadataEngine.execute(dataset);
 
-    /**
-     * ---------------------------------------
-     * Step 4
-     * Generate Dataset Statistics
-     * ---------------------------------------
-     */
     const statistics =
       this.statisticsEngine.execute({
 
@@ -67,11 +48,18 @@ export class UploadService {
 
       });
 
-    /**
-     * ---------------------------------------
-     * Final Upload Response
-     * ---------------------------------------
-     */
+    this.datasetRepository.save({
+
+      dataset,
+
+      metadata,
+
+      quality,
+
+      statistics,
+
+    });
+
     return {
 
       dataset,

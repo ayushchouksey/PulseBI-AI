@@ -4,12 +4,15 @@ import { StatisticsController } from "../controllers/StatisticsController.js";
 
 const router: Router = Router();
 
-
-const controller = new StatisticsController();
+const controller =
+  new StatisticsController();
 
 router.get(
+
   "/:datasetId",
-  controller.get
+
+  controller.getStatistics
+
 );
 
 export default router;

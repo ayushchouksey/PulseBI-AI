@@ -1,40 +1,58 @@
 import type {
   ColumnMetadata,
-  DatasetStatistics,
 } from "@pulsebi/shared-types";
+
+import { DatasetRepository } from "../repositories/index.js";
+import { StatisticsEngine } from "../engines/statistics/index.js";
 
 export class MetadataService {
 
-  /**
-   * Temporary implementation.
-   *
-   * Once DatasetRepository is added, this method will:
-   * 1. Load dataset by id
-   * 2. Replace metadata
-   * 3. Recalculate statistics
-   * 4. Save dataset
-   */
+  private readonly repository =
+  DatasetRepository.getInstance();
+
+  private readonly statisticsEngine =
+    new StatisticsEngine();
+
   public async updateMetadata(
+
     datasetId: string,
+
     metadata: ColumnMetadata[]
-  ): Promise<{
-    datasetId: string;
-    metadata: ColumnMetadata[];
-    statistics: DatasetStatistics | null;
-    success: boolean;
-  }> {
 
-    return {
+  ) {
 
-      datasetId,
+    const stored =
+      this.repository.findById(datasetId);
 
-      metadata,
+    if (!stored) {
 
-      statistics: null,
+      throw new Error("Dataset not found.");
 
-      success: true,
+    }
 
-    };
+    const statistics =
+      this.statisticsEngine.execute({
+
+        dataset: stored.dataset,
+
+        metadata,
+
+        quality: stored.quality,
+
+      });
+
+    const updated =
+      this.repository.updateMetadata(
+
+        datasetId,
+
+        metadata,
+
+        statistics
+
+      );
+
+    return updated;
 
   }
 

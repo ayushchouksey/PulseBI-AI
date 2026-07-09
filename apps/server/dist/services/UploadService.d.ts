@@ -4,5 +4,6 @@ export declare class UploadService {
     private readonly qualityEngine;
     private readonly metadataEngine;
     private readonly statisticsEngine;
+    private readonly datasetRepository;
     processUpload(file: Express.Multer.File): Promise<UploadResponse>;
 }

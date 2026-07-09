@@ -1,8 +1,10 @@
-import { HealthService } from "../services/HealthService.js";
 export class HealthController {
-    static async getHealth(_req, res) {
-        const result = await HealthService.getHealth();
-        res.json(result);
-    }
+    health = (_req, res) => {
+        return res.json({
+            status: "UP",
+            service: "PulseBI AI",
+            timestamp: new Date().toISOString(),
+        });
+    };
 }
 //# sourceMappingURL=HealthController.js.map

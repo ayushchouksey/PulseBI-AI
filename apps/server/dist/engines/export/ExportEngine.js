@@ -1,10 +1,6 @@
 export class ExportEngine {
-    async export(_dashboard) {
-        // TODO:
-        // PNG
-        // PDF
-        // CSV
-        // Excel
+    execute(dashboard) {
+        return Buffer.from(JSON.stringify(dashboard, null, 2));
     }
 }
 //# sourceMappingURL=ExportEngine.js.map

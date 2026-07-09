@@ -1,8 +1,18 @@
 export declare class AIService {
-    private engine;
-    private provider;
-    askQuestion(question: string): Promise<{
-        answer: string;
-        actions: never[];
+    private readonly repository;
+    private readonly engine;
+    ask(datasetId: string, question: string): Promise<{
+        type: string;
+        answer: import("@pulsebi/shared-types").KPI[];
+    } | {
+        type: string;
+        answer: import("@pulsebi/shared-types").ColumnMetadata[];
+    } | {
+        type: string;
+        answer: {
+            rows: number;
+            columns: number;
+            kpis: number;
+        };
     }>;
 }

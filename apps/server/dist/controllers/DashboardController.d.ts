@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
 export declare class DashboardController {
     private readonly service;
-    generate: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+    getDashboard: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 }

@@ -2,14 +2,17 @@ import { Router } from "express";
 
 import { ExportController } from "../controllers/ExportController.js";
 
-const router: Router = Router();
+const router : Router = Router();
 
+const controller =
+  new ExportController();
 
-const controller = new ExportController();
+router.get(
 
-router.post(
-  "/dashboard",
+  "/:datasetId",
+
   controller.export
+
 );
 
 export default router;

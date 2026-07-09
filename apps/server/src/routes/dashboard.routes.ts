@@ -4,12 +4,15 @@ import { DashboardController } from "../controllers/DashboardController.js";
 
 const router: Router = Router();
 
+const controller =
+  new DashboardController();
 
-const controller = new DashboardController();
+router.get(
 
-router.post(
-  "/generate",
-  controller.generate
+  "/:datasetId",
+
+  controller.getDashboard
+
 );
 
 export default router;

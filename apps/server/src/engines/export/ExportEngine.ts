@@ -1,14 +1,27 @@
-export class ExportEngine {
+import type {
+  Engine,
+} from "../../core/engine.interface.js";
 
-  public async export(
-    _dashboard: unknown
-  ): Promise<void> {
+export class ExportEngine
+  implements Engine<
+    unknown,
+    Buffer
+  >
+{
 
-    // TODO:
-    // PNG
-    // PDF
-    // CSV
-    // Excel
+  execute(
+    dashboard: unknown
+  ): Buffer {
+
+    return Buffer.from(
+
+      JSON.stringify(
+        dashboard,
+        null,
+        2
+      )
+
+    );
 
   }
 

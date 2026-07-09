@@ -1,8 +1,10 @@
-import { ConfigService } from "../services/ConfigService.js";
+import { config } from "../config/index.js";
 export class ConfigController {
-    static async getConfig(_req, res) {
-        const config = await ConfigService.getPublicConfig();
-        res.json(config);
-    }
+    get = (_req, res) => {
+        return res.json({
+            upload: config.upload,
+            version: "1.0.0",
+        });
+    };
 }
 //# sourceMappingURL=ConfigController.js.map

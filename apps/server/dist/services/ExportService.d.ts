@@ -1,7 +1,6 @@
 export declare class ExportService {
-    private engine;
-    exportDashboard(dashboardId: string): Promise<{
-        dashboardId: string;
-        url: string;
-    }>;
+    private readonly repository;
+    private readonly dashboardEngine;
+    private readonly exportEngine;
+    exportDashboard(datasetId: string): Promise<Buffer<ArrayBufferLike>>;
 }
