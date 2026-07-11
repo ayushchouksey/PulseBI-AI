@@ -1,0 +1,12 @@
+{
+  "buildCommand": "npm run build -w apps/client",
+  "outputDirectory": "apps/client/dist",
+  "installCommand": "npm install",
+  "framework": null,
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://pulsebi-api.up.railway.app/api/:path*"
+    }
+  ]
+}
