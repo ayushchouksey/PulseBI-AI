@@ -4,6 +4,7 @@ import { Card } from "../../components/ui/Card";
 import { ChartRenderer } from "./ChartRenderer";
 import { InsightList } from "./InsightList";
 import { SummaryBar } from "./SummaryBar";
+import { AnalysisPanel } from "./AnalysisPanel";
 import { ChatPanel } from "../chat/ChatPanel";
 import { Button } from "../../components/ui/Button";
 import { MessageSquare, Download, RefreshCw } from "lucide-react";
@@ -35,11 +36,7 @@ export function DashboardPage() {
               <RefreshCw className="h-4 w-4" />
               Refresh
             </Button>
-            <Button
-              variant={chatOpen ? "primary" : "secondary"}
-              size="sm"
-              onClick={toggleChat}
-            >
+            <Button variant={chatOpen ? "primary" : "secondary"} size="sm" onClick={toggleChat}>
               <MessageSquare className="h-4 w-4" />
               AI Chat
             </Button>
@@ -49,17 +46,17 @@ export function DashboardPage() {
 
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Executive Summary */}
+        {/* Layer 1: Executive Summary */}
         <SummaryBar />
 
-        {/* KPI Cards */}
+        {/* Layer 1: KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {kpis.slice(0, 8).map((kpi, i) => (
             <MetricCard key={kpi.id} kpi={kpi} index={i} />
           ))}
         </div>
 
-        {/* Charts Grid */}
+        {/* Layer 1: Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {charts.slice(0, 6).map((chart) => (
             <Card key={chart.id} padding="none" className="overflow-hidden animate-in">
@@ -74,16 +71,19 @@ export function DashboardPage() {
           ))}
         </div>
 
-        {/* Insights */}
+        {/* Layer 1: Insights */}
         {insights.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-surface-900 mb-4">Insights & Alerts</h2>
             <InsightList insights={insights} />
           </div>
         )}
+
+        {/* Layer 2: AI Analysis Panel (transient) */}
+        <AnalysisPanel />
       </div>
 
-      {/* Chat Panel */}
+      {/* Layer 3: Chat Panel */}
       {chatOpen && <ChatPanel />}
     </div>
   );

@@ -1,11 +1,12 @@
 import { create } from "zustand";
-import type { DashboardJSON, ChatMessage, DatasetMetadata, FilterState } from "@pulsebi/shared-types";
+import type { DashboardJSON, ChatMessage, DatasetMetadata, FilterState, AnalysisResult } from "@pulsebi/shared-types";
 
 interface AppState {
   datasetId: string | null;
   metadata: DatasetMetadata | null;
   dashboard: DashboardJSON | null;
   chatMessages: ChatMessage[];
+  analysis: AnalysisResult | null;
   filters: FilterState[];
   sidebarOpen: boolean;
   chatOpen: boolean;
@@ -16,6 +17,8 @@ interface AppState {
   updateDashboard: (patch: Partial<DashboardJSON>) => void;
   addChatMessage: (message: ChatMessage) => void;
   clearChat: () => void;
+  setAnalysis: (analysis: AnalysisResult | null) => void;
+  pinAnalysisToDashboard: () => void;
   addFilter: (filter: FilterState) => void;
   removeFilter: (column: string) => void;
   clearFilters: () => void;
@@ -31,6 +34,7 @@ const initialState = {
   metadata: null,
   dashboard: null,
   chatMessages: [],
+  analysis: null,
   filters: [],
   sidebarOpen: true,
   chatOpen: false,
@@ -53,6 +57,20 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ chatMessages: [...state.chatMessages, message] })),
 
   clearChat: () => set({ chatMessages: [] }),
+
+  setAnalysis: (analysis) => set({ analysis }),
+
+  pinAnalysisToDashboard: () =>
+    set((state) => {
+      if (!state.analysis?.chart || !state.dashboard) return state;
+      return {
+        dashboard: {
+          ...state.dashboard,
+          charts: [...state.dashboard.charts, state.analysis.chart],
+        },
+        analysis: state.analysis ? { ...state.analysis, pinned: true } : null,
+      };
+    }),
 
   addFilter: (filter) =>
     set((state) => ({ filters: [...state.filters.filter((f) => f.column !== filter.column), filter] })),

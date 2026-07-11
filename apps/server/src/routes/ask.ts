@@ -5,7 +5,7 @@ import { buildSummaryPrompt, buildChatPrompt } from "../engines/prompt/promptBui
 import { callOllama, callOllamaJSON, checkOllamaHealth } from "../providers/ollama/ollamaProvider.js";
 import { detectIntent } from "../engines/intent/intentEngine.js";
 import { executeQuery } from "../engines/query/queryEngine.js";
-import type { ExecutiveSummary, DashboardJSON } from "@pulsebi/shared-types";
+import type { ExecutiveSummary, DashboardJSON, AIResponse } from "@pulsebi/shared-types";
 import { logger } from "../utils/logger.js";
 
 const router = Router();
@@ -25,13 +25,8 @@ function buildFallbackSummary(dataset: { raw: { metadata: { rowCount: number; co
   }
 
   const warnings = dataset.dashboard.insights.filter((i) => i.type === "negative" || i.type === "warning");
-  if (warnings.length > 0) {
-    highlights.push(`Warning: ${warnings[0].title}`);
-  }
-
-  if (highlights.length === 0) {
-    highlights.push(`Dataset contains ${dataset.raw.metadata.rowCount} records across ${dataset.raw.metadata.columnCount} columns`);
-  }
+  if (warnings.length > 0) highlights.push(`Warning: ${warnings[0].title}`);
+  if (highlights.length === 0) highlights.push(`Dataset contains ${dataset.raw.metadata.rowCount} records across ${dataset.raw.metadata.columnCount} columns`);
 
   return {
     greeting: "Good Morning",
@@ -44,17 +39,10 @@ function buildFallbackSummary(dataset: { raw: { metadata: { rowCount: number; co
 router.get("/:datasetId/summary", async (req, res) => {
   try {
     const dataset = datasets[req.params.datasetId];
-    if (!dataset) {
-      res.status(404).json({ success: false, error: "Dataset not found" });
-      return;
-    }
+    if (!dataset) { res.status(404).json({ success: false, error: "Dataset not found" }); return; }
 
     const ollamaAvailable = await checkOllamaHealth();
-
-    if (!ollamaAvailable) {
-      res.json({ success: true, data: buildFallbackSummary(dataset) });
-      return;
-    }
+    if (!ollamaAvailable) { res.json({ success: true, data: buildFallbackSummary(dataset) }); return; }
 
     const summaryRequest = buildExecutiveSummaryRequest(dataset.dashboard);
     const prompt = buildSummaryPrompt(summaryRequest);
@@ -62,9 +50,7 @@ router.get("/:datasetId/summary", async (req, res) => {
     try {
       const result = await callOllamaJSON<ExecutiveSummary>(prompt);
       res.json({ success: true, data: result });
-    } catch (jsonErr) {
-      logger.warn({ err: jsonErr instanceof Error ? jsonErr.message : String(jsonErr) }, "JSON parse failed, using raw text");
-
+    } catch {
       const rawText = await callOllama(prompt);
       res.json({
         success: true,
@@ -86,21 +72,16 @@ router.get("/:datasetId/summary", async (req, res) => {
 router.post("/:datasetId/ask", async (req, res) => {
   try {
     const dataset = datasets[req.params.datasetId];
-    if (!dataset) {
-      res.status(404).json({ success: false, error: "Dataset not found" });
-      return;
-    }
+    if (!dataset) { res.status(404).json({ success: false, error: "Dataset not found" }); return; }
 
     const { question } = req.body;
-    if (!question || typeof question !== "string") {
-      res.status(400).json({ success: false, error: "Question is required" });
-      return;
-    }
+    if (!question || typeof question !== "string") { res.status(400).json({ success: false, error: "Question is required" }); return; }
 
     const columnNames = dataset.raw.metadata.columns.map((c: { name: string }) => c.name);
     const intent = detectIntent(question, columnNames);
 
-    const queryResult = executeQuery({
+    // Step 1: Node executes the query deterministically
+    const aiResponse: AIResponse = executeQuery({
       intent,
       question,
       metadata: dataset.raw.metadata,
@@ -109,17 +90,22 @@ router.post("/:datasetId/ask", async (req, res) => {
       rows: dataset.raw.rows,
     });
 
-    const ollamaAvailable = await checkOllamaHealth();
+    // Step 2: If DASHBOARD_MODIFICATION, apply the patch to stored dashboard
+    if (intent.level === "dashboard_modification" && aiResponse.dashboardPatch) {
+      const current = dataset.dashboard;
+      dataset.dashboard = {
+        ...current,
+        ...aiResponse.dashboardPatch,
+        charts: aiResponse.dashboardPatch.charts ?? current.charts,
+        kpis: aiResponse.dashboardPatch.kpis ?? current.kpis,
+        insights: aiResponse.dashboardPatch.insights ?? current.insights,
+      };
+    }
 
+    // Step 3: If Ollama available, let it explain the verified results
+    const ollamaAvailable = await checkOllamaHealth();
     if (!ollamaAvailable) {
-      res.json({
-        success: true,
-        data: {
-          answer: queryResult.answer,
-          intent,
-          data: queryResult.data,
-        },
-      });
+      res.json({ success: true, data: aiResponse });
       return;
     }
 
@@ -129,31 +115,18 @@ router.post("/:datasetId/ask", async (req, res) => {
       intent,
       summaryRequest,
       dashboard: dataset.dashboard,
-      queryResult: queryResult.answer,
-      queryData: queryResult.data,
+      queryResult: aiResponse.answer,
+      queryData: aiResponse.analysis?.chart?.config?.data as Record<string, unknown>[] | undefined,
     });
 
     try {
       const aiText = await callOllama(prompt);
-      res.json({
-        success: true,
-        data: {
-          answer: aiText || queryResult.answer,
-          intent,
-          data: queryResult.data,
-        },
-      });
+      if (aiText) aiResponse.answer = aiText;
     } catch (aiErr) {
-      logger.warn({ err: aiErr instanceof Error ? aiErr.message : String(aiErr) }, "Ollama chat failed, using query result");
-      res.json({
-        success: true,
-        data: {
-          answer: queryResult.answer,
-          intent,
-          data: queryResult.data,
-        },
-      });
+      logger.warn({ err: aiErr instanceof Error ? aiErr.message : String(aiErr) }, "Ollama failed, using Node answer");
     }
+
+    res.json({ success: true, data: aiResponse });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     logger.error({ err: msg }, "Query failed");

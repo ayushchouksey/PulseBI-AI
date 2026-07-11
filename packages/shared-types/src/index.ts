@@ -163,6 +163,10 @@ export interface DashboardJSON {
   insights: BusinessInsight[];
 }
 
+// ─── Three-Layer Architecture ────────────────────────────────────
+
+export type IntentLevel = "information" | "analysis" | "dashboard_modification";
+
 export type IntentType =
   | "highest"
   | "lowest"
@@ -189,6 +193,7 @@ export type IntentType =
   | "unknown";
 
 export interface DetectedIntent {
+  level: IntentLevel;
   type: IntentType;
   metric?: string;
   dimension?: string;
@@ -199,13 +204,32 @@ export interface DetectedIntent {
   limit?: number;
 }
 
-export interface QueryResult {
+export interface AnalysisChart {
+  id: string;
+  chart: RecommendedChart;
+  insights: BusinessInsight[];
+  recommendations: string[];
+}
+
+export interface AIResponse {
   intent: DetectedIntent;
   answer: string;
-  data: Record<string, unknown>[];
-  chartUpdate?: Partial<DashboardWidget>;
+  analysis?: AnalysisChart;
   dashboardPatch?: Partial<DashboardJSON>;
 }
+
+export interface AnalysisResult {
+  id: string;
+  question: string;
+  answer: string;
+  chart?: RecommendedChart;
+  insights: BusinessInsight[];
+  recommendations: string[];
+  timestamp: string;
+  pinned: boolean;
+}
+
+// ─── Existing Types ──────────────────────────────────────────────
 
 export interface ExecutiveSummaryRequest {
   topPerformers: NameValuePair[];
@@ -228,8 +252,7 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
-  queryResult?: QueryResult;
-  dashboardPatch?: Partial<DashboardJSON>;
+  aiResponse?: AIResponse;
 }
 
 export interface DatasetContext {
