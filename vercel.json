@@ -1,7 +1,7 @@
 {
-  "buildCommand": "npm install && npm run build -w apps/client",
+  "buildCommand": "cd apps/client && npx vite build",
   "outputDirectory": "apps/client/dist",
-  "installCommand": "echo 'skipped'",
+  "installCommand": "npm install",
   "framework": null,
   "rewrites": [
     {
