@@ -2,7 +2,7 @@ import { Router } from "express";
 import { datasets } from "./upload.js";
 import { buildExecutiveSummaryRequest } from "../engines/dashboard/dashboardEngine.js";
 import { buildSummaryPrompt, buildChatPrompt } from "../engines/prompt/promptBuilder.js";
-import { callOllama, callOllamaJSON, checkOllamaHealth } from "../providers/ollama/ollamaProvider.js";
+import { callLLM, callLLMJSON, checkLLMHealth } from "../providers/llmProvider.js";
 import { detectIntent } from "../engines/intent/intentEngine.js";
 import { executeQuery } from "../engines/query/queryEngine.js";
 import type { ExecutiveSummary, DashboardJSON, AIResponse } from "@pulsebi/shared-types";
@@ -48,18 +48,18 @@ router.get("/:datasetId/summary", async (req, res) => {
     const dataset = datasets[req.params.datasetId];
     if (!dataset) { res.status(404).json({ success: false, error: "Dataset not found" }); return; }
 
-    const ollamaAvailable = await checkOllamaHealth();
-    if (!ollamaAvailable) { res.json({ success: true, data: buildFallbackSummary(dataset) }); return; }
+    const llmAvailable = await checkLLMHealth();
+    if (!llmAvailable) { res.json({ success: true, data: buildFallbackSummary(dataset) }); return; }
 
     const summaryRequest = buildExecutiveSummaryRequest(dataset.dashboard);
     const prompt = buildSummaryPrompt(summaryRequest);
 
     try {
-      const result = await callOllamaJSON<ExecutiveSummary>(prompt);
+      const result = await callLLMJSON<ExecutiveSummary>(prompt);
       result.greeting = getGreeting();
       res.json({ success: true, data: result });
     } catch {
-      const rawText = await callOllama(prompt);
+      const rawText = await callLLM(prompt);
       res.json({
         success: true,
         data: {
@@ -118,9 +118,9 @@ router.post("/:datasetId/ask", async (req, res) => {
       return;
     }
 
-    // Step 4: For information & analysis, optionally let Ollama explain
-    const ollamaAvailable = await checkOllamaHealth();
-    if (!ollamaAvailable) {
+    // Step 4: For information & analysis, optionally let LLM explain
+    const llmAvailable = await checkLLMHealth();
+    if (!llmAvailable) {
       res.json({ success: true, data: aiResponse });
       return;
     }
@@ -136,10 +136,10 @@ router.post("/:datasetId/ask", async (req, res) => {
     });
 
     try {
-      const aiText = await callOllama(prompt);
+      const aiText = await callLLM(prompt);
       if (aiText) aiResponse.answer = aiText;
     } catch (aiErr) {
-      logger.warn({ err: aiErr instanceof Error ? aiErr.message : String(aiErr) }, "Ollama failed, using Node answer");
+      logger.warn({ err: aiErr instanceof Error ? aiErr.message : String(aiErr) }, "LLM failed, using Node answer");
     }
 
     res.json({ success: true, data: aiResponse });
@@ -150,9 +150,9 @@ router.post("/:datasetId/ask", async (req, res) => {
   }
 });
 
-router.get("/health/ollama", async (_req, res) => {
-  const healthy = await checkOllamaHealth();
-  res.json({ available: healthy });
+router.get("/health/llm", async (_req, res) => {
+  const healthy = await checkLLMHealth();
+  res.json({ available: healthy, provider: process.env.LLM_PROVIDER || "ollama" });
 });
 
 export default router;
