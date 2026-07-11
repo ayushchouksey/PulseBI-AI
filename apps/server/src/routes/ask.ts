@@ -102,7 +102,13 @@ router.post("/:datasetId/ask", async (req, res) => {
       };
     }
 
-    // Step 3: If Ollama available, let it explain the verified results
+    // Step 3: For dashboard modifications, use Node answer directly (Ollama doesn't know dashboard state)
+    if (intent.level === "dashboard_modification") {
+      res.json({ success: true, data: aiResponse });
+      return;
+    }
+
+    // Step 4: If Ollama available, let it explain the verified results
     const ollamaAvailable = await checkOllamaHealth();
     if (!ollamaAvailable) {
       res.json({ success: true, data: aiResponse });

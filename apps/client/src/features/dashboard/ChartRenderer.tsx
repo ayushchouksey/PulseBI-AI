@@ -42,12 +42,13 @@ function renderLineChart(chart: RecommendedChart, config: Record<string, unknown
           marker: { size: 6, color: "#3366ff" },
           fill: "tozeroy",
           fillcolor: "rgba(51, 102, 255, 0.08)",
+          hovertemplate: `<b>%{x}</b><br>${chart.yAxis || "Value"}: %{y:,.0f}<extra></extra>`,
         },
       ]}
       layout={{
         ...defaultLayout,
-        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "" } },
-        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "" } },
+        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "", standoff: 12 } },
+        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "", standoff: 8 } },
       }}
       config={defaultConfig}
       useResizeHandler
@@ -69,15 +70,22 @@ function renderBarChart(chart: RecommendedChart, config: Record<string, unknown>
           x: data.map((d) => d.name),
           y: data.map((d) => d.value),
           type: "bar",
-          marker: { color: colors },
-          hovertemplate: "%{x}<br>%{y:,.0f}<extra></extra>",
+          marker: {
+            color: colors,
+            line: { color: colors.map((c) => c), width: 0 },
+          },
+          textposition: "outside",
+          textfont: { size: 11, color: "#475569" },
+          texttemplate: "%{y:,.0f}",
+          hovertemplate: `<b>%{x}</b><br>${chart.yAxis || "Value"}: %{y:,.0f}<extra></extra>`,
         },
       ]}
       layout={{
         ...defaultLayout,
-        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "" }, tickangle: data.length > 6 ? -45 : 0 },
-        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "" } },
+        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "", standoff: 12 }, tickangle: data.length > 6 ? -45 : 0 },
+        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "", standoff: 8 } },
         bargap: 0.3,
+        showlegend: false,
       }}
       config={defaultConfig}
       useResizeHandler
@@ -91,6 +99,7 @@ function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>
   if (!data) return <EmptyChart />;
 
   const colors = generateColors(data.length);
+  const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
     <Plot
@@ -100,16 +109,24 @@ function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>
           values: data.map((d) => d.value),
           type: "pie",
           hole: 0.55,
-          marker: { colors },
+          marker: { colors, line: { color: "#fff", width: 2 } },
           textinfo: "label+percent",
           textposition: "outside",
-          textfont: { size: 12 },
-          hovertemplate: "%{label}<br>%{value:,.0f}<br>%{percent}<extra></extra>",
+          textfont: { size: 12, color: "#475569" },
+          hovertemplate: `<b>%{label}</b><br>Value: %{value:,.0f}<br>Share: %{percent}<extra></extra>`,
+          pull: data.map(() => 0.02),
         },
       ]}
       layout={{
         ...defaultLayout,
         showlegend: false,
+        annotations: [{
+          text: `<b>${formatCompact(total)}</b><br>Total`,
+          showarrow: false,
+          font: { size: 16, color: "#1e293b", family: "Inter, system-ui" },
+          x: 0.5,
+          y: 0.5,
+        }],
       }}
       config={defaultConfig}
       useResizeHandler
@@ -131,18 +148,18 @@ function renderScatterChart(chart: RecommendedChart, config: Record<string, unkn
           type: "scatter",
           mode: "markers",
           marker: {
-            size: 8,
+            size: 10,
             color: "#3366ff",
-            opacity: 0.6,
-            line: { width: 1, color: "#1a44f5" },
+            opacity: 0.65,
+            line: { width: 1.5, color: "#1a44f5" },
           },
-          hovertemplate: "X: %{x}<br>Y: %{y}<extra></extra>",
+          hovertemplate: `<b>${chart.xAxis || "X"}</b>: %{x}<br><b>${chart.yAxis || "Y"}</b>: %{y:,.0f}<extra></extra>`,
         },
       ]}
       layout={{
         ...defaultLayout,
-        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "" } },
-        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "" } },
+        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "", standoff: 12 } },
+        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "", standoff: 8 } },
       }}
       config={defaultConfig}
       useResizeHandler
@@ -162,13 +179,17 @@ function renderHistogram(chart: RecommendedChart, config: Record<string, unknown
           x: bins.map((b) => b.label),
           y: bins.map((b) => b.count),
           type: "bar",
-          marker: { color: "rgba(51, 102, 255, 0.7)" },
+          marker: {
+            color: "rgba(51, 102, 255, 0.7)",
+            line: { color: "rgba(51, 102, 255, 1)", width: 1 },
+          },
+          hovertemplate: `<b>%{x}</b><br>Count: %{y}<extra></extra>`,
         },
       ]}
       layout={{
         ...defaultLayout,
-        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "" }, tickangle: -45 },
-        yaxis: { ...defaultLayout.yaxis, title: { text: "Count" } },
+        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "", standoff: 12 }, tickangle: -45 },
+        yaxis: { ...defaultLayout.yaxis, title: { text: "Count", standoff: 8 } },
         bargap: 0.05,
       }}
       config={defaultConfig}
@@ -191,13 +212,14 @@ function renderAreaChart(chart: RecommendedChart, config: Record<string, unknown
           type: "scatter",
           fill: "tozeroy",
           fillcolor: "rgba(51, 102, 255, 0.15)",
-          line: { color: "#3366ff", width: 2 },
+          line: { color: "#3366ff", width: 2, shape: "spline" },
+          hovertemplate: `<b>%{x}</b><br>${chart.yAxis || "Value"}: %{y:,.0f}<extra></extra>`,
         },
       ]}
       layout={{
         ...defaultLayout,
-        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "" } },
-        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "" } },
+        xaxis: { ...defaultLayout.xaxis, title: { text: chart.xAxis || "", standoff: 12 } },
+        yaxis: { ...defaultLayout.yaxis, title: { text: chart.yAxis || "", standoff: 8 } },
       }}
       config={defaultConfig}
       useResizeHandler
@@ -218,24 +240,31 @@ const defaultLayout = {
   paper_bgcolor: "transparent",
   plot_bgcolor: "transparent",
   font: { family: "Inter, system-ui, sans-serif", size: 12, color: "#64748b" },
-  margin: { l: 48, r: 24, t: 16, b: 48 },
+  margin: { l: 52, r: 24, t: 16, b: 52 },
   xaxis: {
     gridcolor: "#f1f5f9",
     linecolor: "#e2e8f0",
     showgrid: true,
     zeroline: false,
+    tickfont: { size: 11, color: "#94a3b8" },
   },
   yaxis: {
     gridcolor: "#f1f5f9",
     linecolor: "#e2e8f0",
     showgrid: true,
     zeroline: false,
+    tickfont: { size: 11, color: "#94a3b8" },
+    tickformat: ",.0f",
   },
   hoverlabel: {
-    bgcolor: "#1e293b",
-    font: { color: "#fff", size: 13 },
+    bgcolor: "#0f172a",
     bordercolor: "transparent",
+    font: { color: "#f8fafc", size: 13, family: "Inter, system-ui, sans-serif" },
+    align: "left" as const,
+    namelength: -1,
+    padding: 12,
   },
+  hovermode: "closest" as const,
 };
 
 const defaultConfig = {
@@ -250,4 +279,10 @@ const CHART_COLORS = [
 
 function generateColors(count: number): string[] {
   return Array.from({ length: count }, (_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+}
+
+function formatCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toFixed(0);
 }

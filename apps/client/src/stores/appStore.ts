@@ -12,9 +12,11 @@ interface AppState {
   chatOpen: boolean;
   isUploading: boolean;
   uploadProgress: number;
+  newlyAddedChartId: string | null;
 
   setDataset: (id: string, metadata: DatasetMetadata, dashboard: DashboardJSON) => void;
   updateDashboard: (patch: Partial<DashboardJSON>) => void;
+  clearNewlyAddedChartId: () => void;
   addChatMessage: (message: ChatMessage) => void;
   clearChat: () => void;
   setAnalysis: (analysis: AnalysisResult | null) => void;
@@ -40,6 +42,7 @@ const initialState = {
   chatOpen: false,
   isUploading: false,
   uploadProgress: 0,
+  newlyAddedChartId: null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -49,9 +52,17 @@ export const useAppStore = create<AppState>((set) => ({
     set({ datasetId: id, metadata, dashboard }),
 
   updateDashboard: (patch) =>
-    set((state) => ({
-      dashboard: state.dashboard ? { ...state.dashboard, ...patch } : null,
-    })),
+    set((state) => {
+      const prevChartIds = new Set(state.dashboard?.charts?.map((c) => c.id) ?? []);
+      const newDashboard = state.dashboard ? { ...state.dashboard, ...patch } : null;
+      const newChart = newDashboard?.charts?.find((c) => !prevChartIds.has(c.id));
+      return {
+        dashboard: newDashboard,
+        newlyAddedChartId: newChart?.id ?? null,
+      };
+    }),
+
+  clearNewlyAddedChartId: () => set({ newlyAddedChartId: null }),
 
   addChatMessage: (message) =>
     set((state) => ({ chatMessages: [...state.chatMessages, message] })),

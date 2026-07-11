@@ -24,8 +24,11 @@ export function executeQuery(input: QueryEngineInput): AIResponse {
     .filter((c) => c.role === "dimension" && c.detectedType !== "date" && c.detectedType !== "id" && c.uniqueCount > 1)
     .map((c) => c.name);
 
+  const isDimensionCol = (name: string) =>
+    metadata.columns.some((c) => c.name === name && (c.role === "dimension" || c.detectedType === "date" || c.detectedType === "id" || (c.uniqueCount ?? 0) > 20));
+
   function resolveMetric(): string | undefined {
-    if (intent.metric) {
+    if (intent.metric && !isDimensionCol(intent.metric)) {
       const found = numericCols.find((c) => c.toLowerCase() === intent.metric!.toLowerCase())
         || numericCols.find((c) => c.toLowerCase().includes(intent.metric!.toLowerCase()));
       if (found) return found;
@@ -39,6 +42,9 @@ export function executeQuery(input: QueryEngineInput): AIResponse {
       const found = all.find((c) => c.toLowerCase() === intent.dimension!.toLowerCase())
         || all.find((c) => c.toLowerCase().includes(intent.dimension!.toLowerCase()));
       if (found) return found;
+    }
+    if (intent.metric && isDimensionCol(intent.metric)) {
+      return intent.metric;
     }
     return dimensionCols[0] || metadata.columns.find((c) => c.role === "dimension")?.name;
   }

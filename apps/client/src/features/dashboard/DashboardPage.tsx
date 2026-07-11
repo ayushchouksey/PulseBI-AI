@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useAppStore } from "../../stores/appStore";
 import { MetricCard } from "../../components/ui/MetricCard";
 import { Card } from "../../components/ui/Card";
@@ -10,7 +11,23 @@ import { Button } from "../../components/ui/Button";
 import { MessageSquare, Download, RefreshCw } from "lucide-react";
 
 export function DashboardPage() {
-  const { dashboard, chatOpen, toggleChat } = useAppStore();
+  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId } = useAppStore();
+  const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  useEffect(() => {
+    if (newlyAddedChartId) {
+      const timer = setTimeout(() => {
+        const el = chartRefs.current.get(newlyAddedChartId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("ring-2", "ring-brand-400", "ring-offset-2");
+          setTimeout(() => el.classList.remove("ring-2", "ring-brand-400", "ring-offset-2"), 2500);
+        }
+        clearNewlyAddedChartId();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [newlyAddedChartId, clearNewlyAddedChartId]);
 
   if (!dashboard) return null;
 
@@ -59,15 +76,20 @@ export function DashboardPage() {
         {/* Layer 1: Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {charts.slice(0, 6).map((chart) => (
-            <Card key={chart.id} padding="none" className="overflow-hidden animate-in">
-              <div className="px-6 pt-5 pb-2">
-                <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
-                <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
-              </div>
-              <div className="h-72">
-                <ChartRenderer chart={chart} />
-              </div>
-            </Card>
+            <div
+              key={chart.id}
+              ref={(el) => { if (el) chartRefs.current.set(chart.id, el); }}
+            >
+              <Card padding="none" className="overflow-hidden animate-in">
+                <div className="px-6 pt-5 pb-2">
+                  <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
+                  <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                </div>
+                <div className="h-72">
+                  <ChartRenderer chart={chart} />
+                </div>
+              </Card>
+            </div>
           ))}
         </div>
 

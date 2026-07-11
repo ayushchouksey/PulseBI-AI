@@ -19,13 +19,13 @@ export function detectIntent(question: string, availableColumns: string[]): Dete
   const limit = extractLimit(lower);
 
   const level = classifyLevel(lower);
-  const type = classifyType(lower, level);
+  const type = classifyType(lower, level, metric, dimension);
 
   return { level, type, metric, dimension, limit };
 }
 
 function classifyLevel(question: string): IntentLevel {
-  if (/\b(add|remove|delete|replace|pin|create|save|show chart|hide chart|new kpi|remove kpi|add chart|swap)\b/i.test(question)) {
+  if (/\b(add|remove|delete|replace|pin|create|save|show chart|hide chart|new kpi|remove kpi|add chart|swap|make a|put|include)\b/i.test(question)) {
     return "dashboard_modification";
   }
   if (/\b(compare|vs|versus|why|explain|trend|over time|growth|show me|analyze|analysis|breakdown|distribution|correlation|relationship|monthly|quarterly|yearly|before and after|difference)\b/i.test(question)) {
@@ -34,7 +34,22 @@ function classifyLevel(question: string): IntentLevel {
   return "information";
 }
 
-function classifyType(question: string, _level: IntentLevel): IntentType {
+function classifyType(question: string, _level: IntentLevel, metric?: string, dimension?: string): IntentType {
+  // ── Dashboard modification types ──
+  // Chart operations: match broadly — user might say "add a chart", "make a chart", "put a chart", etc.
+  if (/\b(add|create|make|put|include|show|new|build)\b.*\b(chart|graph|visualization|plot|visual)\b/i.test(question)) return "chart_add";
+  if (/\b(remove|delete|hide|drop)\b.*\b(chart|graph|visualization|plot|visual)\b/i.test(question)) return "chart_remove";
+  if (/\b(replace|swap|change|update|modify)\b.*\b(chart|graph|visualization|plot|visual)\b/i.test(question)) return "chart_replace";
+
+  // Also match: "chart for X", "X chart", "graph of X"
+  if (/\b(chart|graph|visualization|plot|visual)\b.*(for|of|by|showing|displaying|with)\b/i.test(question)) return "chart_add";
+  if (/\b(add|create|make|new|build)\b.*\b(for|of|by|showing|displaying)\b/i.test(question) && !/\bkpi\b/i.test(question)) return "chart_add";
+
+  // KPI operations
+  if (/\b(add|create|make|new|build|show)\b.*\bkpi\b/i.test(question)) return "kpi_add";
+  if (/\b(remove|delete|hide|drop)\b.*\bkpi\b/i.test(question)) return "kpi_remove";
+
+  // ── Analysis / query types ──
   if (/\b(top)\s+(\d+)/i.test(question)) return "top";
   if (/\b(bottom)\s+(\d+)/i.test(question)) return "bottom";
   if (/\b(highest|maximum|max|best)\b/i.test(question)) return "highest";
@@ -42,20 +57,16 @@ function classifyType(question: string, _level: IntentLevel): IntentType {
   if (/\b(compare|vs|versus|against|difference)\b/i.test(question)) return "compare";
   if (/\b(trend|over time|growth|change|evolution)\b/i.test(question)) return "trend";
   if (/\b(average|mean|avg)\b/i.test(question)) return "average";
-  if (/\b(sum|total|aggregate|add up)\b/i.test(question) && question.includes("profit") || question.includes("revenue") || question.includes("sales") || question.includes("cost") || question.includes("amount")) return "sum";
-  if (/\b(count|how many|number of)\b/i.test(question)) return "count";
+  if (/\b(sum|total|aggregate|add up)\b/i.test(question)) return "sum";
   if (/\btotal\b/i.test(question)) return "sum";
+  if (/\b(count|how many|number of)\b/i.test(question)) return "count";
   if (/\b(explain|why|reason|cause)\b/i.test(question)) return "explain";
   if (/\b(summary|summarize|overview|recap)\b/i.test(question)) return "summary";
   if (/\b(recommend|suggestion|advice|should)\b/i.test(question)) return "recommendation";
-  if (/\b(add chart|show chart|new chart|create chart|pin)\b/i.test(question)) return "chart_add";
-  if (/\b(remove chart|delete chart|hide chart)\b/i.test(question)) return "chart_remove";
-  if (/\b(replace chart|swap chart|change chart)\b/i.test(question)) return "chart_replace";
   if (/\b(highlight|emphasize|focus on)\b/i.test(question)) return "highlight";
   if (/\b(filter|show only|where)\b/i.test(question)) return "filter";
   if (/\b(sort|order|rank|arrange)\b/i.test(question)) return "sort";
-  if (/\b(add kpi|new kpi|show kpi)\b/i.test(question)) return "kpi_add";
-  if (/\b(remove kpi|hide kpi|delete kpi)\b/i.test(question)) return "kpi_remove";
+
   return "unknown";
 }
 
