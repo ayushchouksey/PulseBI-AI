@@ -7,7 +7,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc"
+    "build": "npx tsc"
   },
   "devDependencies": {
     "typescript": "^5.8.3"
