@@ -15,6 +15,7 @@ export default defineConfig({
         __dirname,
         "../../packages/shared-utils/src"
       ),
+      "buffer": "buffer",
     },
   },
   server: {
@@ -25,6 +26,12 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  optimizeDeps: {
+    include: ["buffer", "plotly.js"],
+  },
+  define: {
+    "global": "globalThis",
   },
   build: {
     rollupOptions: {
