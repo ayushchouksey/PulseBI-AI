@@ -8,11 +8,11 @@ import { SummaryBar } from "./SummaryBar";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { ChatPanel } from "../chat/ChatPanel";
 import { Button } from "../../components/ui/Button";
-import { MessageSquare, Download, RefreshCw, Loader2 } from "lucide-react";
+import { MessageSquare, Download, Loader2, Upload, Sparkles } from "lucide-react";
 import { exportChartToPDF, exportDashboardToPDF } from "../../utils/exportPdf";
 
 export function DashboardPage() {
-  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId, highlightedChartId } = useAppStore();
+  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId, highlightedChartId, reset } = useAppStore();
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [exportingAll, setExportingAll] = useState(false);
 
@@ -74,9 +74,9 @@ export function DashboardPage() {
               {exportingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
               {exportingAll ? "Exporting..." : "Export PDF"}
             </Button>
-            <Button variant="ghost" size="sm">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
+            <Button variant="ghost" size="sm" onClick={reset}>
+              <Upload className="h-4 w-4" />
+              New Upload
             </Button>
             <Button variant={chatOpen ? "primary" : "secondary"} size="sm" onClick={toggleChat}>
               <MessageSquare className="h-4 w-4" />
@@ -100,10 +100,11 @@ export function DashboardPage() {
 
         {/* Layer 1: Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {charts.slice(0, 6).map((chart) => {
+          {charts.map((chart) => {
             const isHighlighted = highlightedChartId === chart.id;
             const hasHighlight = highlightedChartId !== null;
             const isFaded = hasHighlight && !isHighlighted;
+            const isAiAdded = chart.dataSource === "dashboard_modification";
 
             return (
               <div
@@ -119,9 +120,19 @@ export function DashboardPage() {
               >
                 <Card padding="none" className="overflow-hidden animate-in">
                   <div className="px-6 pt-5 pb-2 flex items-start justify-between">
-                    <div>
-                      <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
-                      <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                    <div className="flex items-start gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
+                          {isAiAdded && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 text-[10px] font-semibold border border-brand-200">
+                              <Sparkles className="h-2.5 w-2.5" />
+                              Added via AI
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                      </div>
                     </div>
                     <ChartExportButton chartRef={chartRefs.current.get(chart.id) ?? null} title={chart.title} />
                   </div>

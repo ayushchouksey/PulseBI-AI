@@ -1,12 +1,14 @@
+import { useState } from "react";
 import type { RecommendationResult, ExecutiveBrief, DecisionSupport, ExplainResult } from "@pulsebi/shared-types";
 import { useAppStore } from "../../stores/appStore";
 import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { ChartRenderer } from "./ChartRenderer";
 import { InsightList } from "./InsightList";
+import { exportAnalysisPanelToPDF } from "../../utils/exportPdf";
 import {
   Pin, X, Lightbulb, Target, TrendingUp, AlertTriangle,
-  CheckCircle, BarChart3, Brain, Shield, ArrowUpRight, ArrowDownRight,
+  CheckCircle, BarChart3, Brain, Shield, ArrowUpRight, ArrowDownRight, Download, Loader2,
 } from "lucide-react";
 
 const MODE_CONFIG = {
@@ -20,6 +22,7 @@ const MODE_CONFIG = {
 
 export function AnalysisPanel() {
   const { analysis, setAnalysis, pinAnalysisToDashboard } = useAppStore();
+  const [exporting, setExporting] = useState(false);
 
   if (!analysis) return null;
 
@@ -32,8 +35,17 @@ export function AnalysisPanel() {
   const config = MODE_CONFIG[mode];
   const Icon = config.icon;
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      await exportAnalysisPanelToPDF(analysis.question);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
-    <div className="mb-8 animate-in">
+    <div id="analysis-panel-export" className="mb-8 animate-in">
       <Card padding="none" className="overflow-hidden border-brand-200 bg-gradient-to-br from-brand-50/50 to-white">
         {/* Header */}
         <div className="px-6 py-4 border-b border-brand-100 flex items-center justify-between">
@@ -56,6 +68,10 @@ export function AnalysisPanel() {
             {analysis.pinned && (
               <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Pinned</span>
             )}
+            <Button size="sm" variant="ghost" onClick={handleExport} disabled={exporting}>
+              {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              {exporting ? "Exporting..." : "Export PDF"}
+            </Button>
             <button onClick={() => setAnalysis(null)} className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400">
               <X className="h-4 w-4" />
             </button>

@@ -4,12 +4,12 @@ import { Card } from "../../components/ui/Card";
 import { Sparkles } from "lucide-react";
 
 export function SummaryBar() {
-  const { datasetId, setPendingQuestion, toggleChat } = useAppStore();
+  const { datasetId, setPendingQuestion, openChat } = useAppStore();
   const { data: summary, isLoading } = useSummary(datasetId);
 
   const handleSuggestionClick = (question: string) => {
     setPendingQuestion(question);
-    toggleChat();
+    openChat();
   };
 
   if (isLoading) {

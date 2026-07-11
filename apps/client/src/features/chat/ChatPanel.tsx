@@ -5,7 +5,7 @@ import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import {
   X, Send, Bot, User, Loader2, BarChart3, MessageSquareText,
-  TrendingUp, Brain, Shield, Target, Lightbulb, Settings2,
+  TrendingUp, Brain, Shield, Target, Lightbulb, Settings2, SquarePen,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { showToast } from "../../components/ui/Toast";
@@ -33,10 +33,12 @@ const SUGGESTIONS = [
 ];
 
 export function ChatPanel() {
-  const { chatMessages, toggleChat, pendingQuestion, setPendingQuestion } = useAppStore();
+  const { chatMessages, toggleChat, pendingQuestion, setPendingQuestion, clearChat } = useAppStore();
   const [input, setInput] = useState("");
   const askMutation = useAskQuestion();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const askRef = useRef(askMutation.mutate);
+  askRef.current = askMutation.mutate;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -48,16 +50,15 @@ export function ChatPanel() {
       const q = pendingQuestion;
       setPendingQuestion(null);
       setInput(q);
-      // Use setTimeout to ensure state is set before sending
       setTimeout(() => {
         if (q.trim()) {
-          askMutation.mutate(q, {
+          askRef.current(q, {
             onError: (err) => showToast("error", "Failed", err instanceof Error ? err.message : "Unknown error"),
           });
         }
       }, 50);
     }
-  }, [pendingQuestion, setPendingQuestion, askMutation]);
+  }, [pendingQuestion, setPendingQuestion]);
 
   const handleSend = () => {
     if (!input.trim() || askMutation.isPending) return;
@@ -86,9 +87,18 @@ export function ChatPanel() {
               <p className="text-xs text-surface-400">Ask anything about your data</p>
             </div>
           </div>
-          <button onClick={toggleChat} className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => { clearChat(); setInput(""); }}
+              title="New chat"
+              className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 hover:text-surface-600 transition-colors"
+            >
+              <SquarePen className="h-4 w-4" />
+            </button>
+            <button onClick={toggleChat} className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}

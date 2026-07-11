@@ -33,6 +33,7 @@ interface AppState {
   clearFilters: () => void;
   toggleSidebar: () => void;
   toggleChat: () => void;
+  openChat: () => void;
   setUploading: (uploading: boolean) => void;
   setUploadProgress: (progress: number) => void;
   reset: () => void;
@@ -106,6 +107,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   toggleChat: () => set((state) => ({ chatOpen: !state.chatOpen })),
+  openChat: () => set({ chatOpen: true }),
   setUploading: (uploading) => set({ isUploading: uploading }),
   setUploadProgress: (progress) => set({ uploadProgress: progress }),
   reset: () => set(initialState),
