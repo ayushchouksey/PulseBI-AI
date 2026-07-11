@@ -19,6 +19,16 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    const level = ms > 1000 ? "warn" : "info";
+    logger[level]({ method: req.method, url: req.originalUrl, status: res.statusCode, ms }, "request");
+  });
+  next();
+});
+
 app.use("/api/upload", uploadRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/ask", askRoutes);

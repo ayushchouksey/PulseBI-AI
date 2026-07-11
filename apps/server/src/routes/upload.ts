@@ -58,10 +58,16 @@ router.post("/", upload.single("file"), async (req, res) => {
       return;
     }
 
+    const t0 = Date.now();
     logger.info({ filename: req.file.originalname, size: req.file.size }, "Processing CSV upload");
 
     const raw = parseCSV(req.file.path, req.file.originalname);
+    const t1 = Date.now();
+    logger.info({ step: "parseCSV", ms: t1 - t0 });
+
     const metadata = detectMetadata(raw.metadata);
+    const t2 = Date.now();
+    logger.info({ step: "detectMetadata", ms: t2 - t1 });
 
     const measureCols = metadata.measureColumns.map((c) => c.name);
     const dateCols = metadata.dateColumns.map((c) => c.name);
@@ -70,6 +76,8 @@ router.post("/", upload.single("file"), async (req, res) => {
       const values = raw.rows.map((r) => r[col]);
       return computeColumnStatistics(values, col);
     });
+    const t3 = Date.now();
+    logger.info({ step: "statistics", ms: t3 - t2 });
 
     const trends: TrendResult[] = [];
     for (const dc of dateCols) {
@@ -80,6 +88,8 @@ router.post("/", upload.single("file"), async (req, res) => {
     }
 
     const correlations = computeCorrelations(raw.rows, measureCols);
+    const t4 = Date.now();
+    logger.info({ step: "trends+correlations", ms: t4 - t3 });
 
     const dashboard = generateDashboardJSON({
       metadata: raw.metadata,
@@ -88,10 +98,12 @@ router.post("/", upload.single("file"), async (req, res) => {
       correlations,
       rows: raw.rows,
     });
+    const t5 = Date.now();
+    logger.info({ step: "generateDashboard", ms: t5 - t4, totalMs: t5 - t0 });
 
     datasets[raw.metadata.id] = { raw, metadata, statistics, trends, correlations, dashboard };
 
-    logger.info({ datasetId: raw.metadata.id, rows: raw.metadata.rowCount }, "Dataset processed successfully");
+    logger.info({ datasetId: raw.metadata.id, rows: raw.metadata.rowCount, totalMs: t5 - t0 }, "Dataset processed successfully");
 
     res.json({
       success: true,
