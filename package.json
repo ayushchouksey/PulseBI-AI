@@ -1,0 +1,20 @@
+{
+  "name": "pulsebi-ai",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev -w apps/server\" \"npm run dev -w apps/client\"",
+    "build": "npm run build -w apps/client && npm run build -w apps/server",
+    "start": "npm run start -w apps/server",
+    "lint": "npm run lint --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.8.3"
+  }
+}
