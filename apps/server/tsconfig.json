@@ -9,12 +9,7 @@
     "noEmit": false,
     "outDir": "dist",
     "resolveJsonModule": true,
-    "isolatedModules": true,
-    "paths": {
-      "@pulsebi/shared-types": ["../../packages/shared-types/src"],
-      "@pulsebi/shared-utils": ["../../packages/shared-utils/src"]
-    },
-    "baseUrl": "."
+    "isolatedModules": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
