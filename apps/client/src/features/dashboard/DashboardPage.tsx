@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../../stores/appStore";
 import { MetricCard } from "../../components/ui/MetricCard";
 import { Card } from "../../components/ui/Card";
@@ -8,11 +8,13 @@ import { SummaryBar } from "./SummaryBar";
 import { AnalysisPanel } from "./AnalysisPanel";
 import { ChatPanel } from "../chat/ChatPanel";
 import { Button } from "../../components/ui/Button";
-import { MessageSquare, Download, RefreshCw } from "lucide-react";
+import { MessageSquare, Download, RefreshCw, Loader2 } from "lucide-react";
+import { exportChartToPDF, exportDashboardToPDF } from "../../utils/exportPdf";
 
 export function DashboardPage() {
   const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId, highlightedChartId } = useAppStore();
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [exportingAll, setExportingAll] = useState(false);
 
   // Auto-scroll to newly added chart
   useEffect(() => {
@@ -49,6 +51,15 @@ export function DashboardPage() {
   const charts = dashboard.charts || [];
   const insights = dashboard.insights || [];
 
+  const handleExportAll = async () => {
+    setExportingAll(true);
+    try {
+      await exportDashboardToPDF(dashboard.title);
+    } finally {
+      setExportingAll(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-surface-50">
       {/* Dashboard Header */}
@@ -59,9 +70,9 @@ export function DashboardPage() {
             <p className="text-xs text-surface-400">{dashboard.subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">
-              <Download className="h-4 w-4" />
-              Export
+            <Button variant="ghost" size="sm" onClick={handleExportAll} disabled={exportingAll}>
+              {exportingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              {exportingAll ? "Exporting..." : "Export PDF"}
             </Button>
             <Button variant="ghost" size="sm">
               <RefreshCw className="h-4 w-4" />
@@ -75,8 +86,8 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-[1600px] mx-auto px-6 py-8">
+      {/* Main Content — captured for PDF */}
+      <div id="dashboard-content" className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Layer 1: Executive Summary */}
         <SummaryBar />
 
@@ -107,9 +118,12 @@ export function DashboardPage() {
                 }`}
               >
                 <Card padding="none" className="overflow-hidden animate-in">
-                  <div className="px-6 pt-5 pb-2">
-                    <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
-                    <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                  <div className="px-6 pt-5 pb-2 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
+                      <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                    </div>
+                    <ChartExportButton chartRef={chartRefs.current.get(chart.id) ?? null} title={chart.title} />
                   </div>
                   <div className="h-72">
                     <ChartRenderer chart={chart} />
@@ -135,5 +149,30 @@ export function DashboardPage() {
       {/* Layer 3: Chat Panel */}
       {chatOpen && <ChatPanel />}
     </div>
+  );
+}
+
+function ChartExportButton({ chartRef, title }: { chartRef: HTMLDivElement | null; title: string }) {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!chartRef) return;
+    setExporting(true);
+    try {
+      await exportChartToPDF(chartRef, title);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleExport}
+      disabled={exporting}
+      className="p-1.5 rounded-lg hover:bg-surface-100 text-surface-400 hover:text-surface-600 transition-colors"
+      title="Export chart as PDF"
+    >
+      {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+    </button>
   );
 }

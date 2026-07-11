@@ -3,32 +3,76 @@ import type { RecommendedChart } from "@pulsebi/shared-types";
 
 interface ChartRendererProps {
   chart: RecommendedChart;
+  compact?: boolean;
 }
 
-export function ChartRenderer({ chart }: ChartRendererProps) {
+export function ChartRenderer({ chart, compact }: ChartRendererProps) {
   const config = chart.config;
 
   switch (chart.type) {
     case "line":
-      return renderLineChart(chart, config);
+      return renderLineChart(chart, config, compact);
     case "bar":
-      return renderBarChart(chart, config);
+      return renderBarChart(chart, config, compact);
     case "pie":
-      return renderPieChart(chart, config);
+      return renderPieChart(chart, config, compact);
     case "scatter":
-      return renderScatterChart(chart, config);
+      return renderScatterChart(chart, config, compact);
     case "histogram":
-      return renderHistogram(chart, config);
+      return renderHistogram(chart, config, compact);
     case "area":
-      return renderAreaChart(chart, config);
+      return renderAreaChart(chart, config, compact);
     default:
-      return renderBarChart(chart, config);
+      return renderBarChart(chart, config, compact);
   }
 }
 
-function renderLineChart(chart: RecommendedChart, config: Record<string, unknown>) {
-  const points = config.points as { x: string; y: number }[] | undefined;
-  if (!points) return <EmptyChart />;
+// ─── Data normalization helpers ───────────────────────────────────
+
+interface NormalizedBar {
+  name: string;
+  value: number;
+}
+
+function normalizeBarData(config: Record<string, unknown>): NormalizedBar[] | undefined {
+  // Format 1: { data: [{ name, value }] }
+  const raw1 = config.data as { name: string; value: number }[] | undefined;
+  if (raw1 && raw1.length > 0 && "name" in raw1[0] && "value" in raw1[0]) {
+    return raw1.filter((d) => d.name != null && isFinite(d.value));
+  }
+  // Format 2: { data: [{ [dimCol]: string, total, count }] }
+  const raw2 = config.data as Record<string, unknown>[] | undefined;
+  if (raw2 && raw2.length > 0) {
+    const keys = Object.keys(raw2[0]);
+    const nameKey = keys.find((k) => typeof raw2[0][k] === "string") || keys[0];
+    const valueKey = keys.find((k) => k === "total" || k === "value" || k === "count") || keys.find((k) => typeof raw2[0][k] === "number");
+    if (nameKey && valueKey) {
+      return raw2
+        .map((d) => ({ name: String(d[nameKey] ?? "Unknown"), value: Number(d[valueKey]) || 0 }))
+        .filter((d) => isFinite(d.value));
+    }
+  }
+  return undefined;
+}
+
+interface NormalizedPoint {
+  x: string | number;
+  y: number;
+}
+
+function normalizePoints(config: Record<string, unknown>): NormalizedPoint[] | undefined {
+  const raw = config.points as { x: string | number; y: number }[] | undefined;
+  if (!raw) return undefined;
+  return raw
+    .map((p) => ({ x: p.x, y: Number(p.y) || 0 }))
+    .filter((p) => isFinite(p.y));
+}
+
+// ─── Chart Renderers ─────────────────────────────────────────────
+
+function renderLineChart(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
+  const points = normalizePoints(config);
+  if (!points || points.length === 0) return <EmptyChart compact />;
 
   return (
     <Plot
@@ -39,7 +83,7 @@ function renderLineChart(chart: RecommendedChart, config: Record<string, unknown
           type: "scatter",
           mode: "lines+markers",
           line: { color: "#3366ff", width: 3, shape: "spline" },
-          marker: { size: 6, color: "#3366ff" },
+          marker: { size: compact ? 4 : 6, color: "#3366ff" },
           fill: "tozeroy",
           fillcolor: "rgba(51, 102, 255, 0.08)",
           hovertemplate: `<b>%{x}</b><br>${chart.yAxis || "Value"}: %{y:,.0f}<extra></extra>`,
@@ -57,9 +101,9 @@ function renderLineChart(chart: RecommendedChart, config: Record<string, unknown
   );
 }
 
-function renderBarChart(chart: RecommendedChart, config: Record<string, unknown>) {
-  const data = config.data as { name: string; value: number }[] | undefined;
-  if (!data) return <EmptyChart />;
+function renderBarChart(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
+  const data = normalizeBarData(config);
+  if (!data || data.length === 0) return <EmptyChart compact />;
 
   const colors = generateColors(data.length);
 
@@ -75,7 +119,7 @@ function renderBarChart(chart: RecommendedChart, config: Record<string, unknown>
             line: { color: colors.map((c) => c), width: 0 },
           },
           textposition: "outside",
-          textfont: { size: 11, color: "#475569" },
+          textfont: { size: compact ? 9 : 11, color: "#475569" },
           texttemplate: "%{y:,.0f}",
           hovertemplate: `<b>%{x}</b><br>${chart.yAxis || "Value"}: %{y:,.0f}<extra></extra>`,
         },
@@ -94,9 +138,9 @@ function renderBarChart(chart: RecommendedChart, config: Record<string, unknown>
   );
 }
 
-function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>) {
-  const data = config.data as { name: string; value: number }[] | undefined;
-  if (!data) return <EmptyChart />;
+function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
+  const data = normalizeBarData(config);
+  if (!data || data.length === 0) return <EmptyChart compact />;
 
   const colors = generateColors(data.length);
   const total = data.reduce((sum, d) => sum + d.value, 0);
@@ -112,7 +156,7 @@ function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>
           marker: { colors, line: { color: "#fff", width: 2 } },
           textinfo: "label+percent",
           textposition: "outside",
-          textfont: { size: 12, color: "#475569" },
+          textfont: { size: compact ? 10 : 12, color: "#475569" },
           hovertemplate: `<b>%{label}</b><br>Value: %{value:,.0f}<br>Share: %{percent}<extra></extra>`,
           pull: data.map(() => 0.02),
         },
@@ -120,7 +164,7 @@ function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>
       layout={{
         ...defaultLayout,
         showlegend: false,
-        annotations: [{
+        annotations: compact ? [] : [{
           text: `<b>${formatCompact(total)}</b><br>Total`,
           showarrow: false,
           font: { size: 16, color: "#1e293b", family: "Inter, system-ui" },
@@ -135,20 +179,22 @@ function renderPieChart(chart: RecommendedChart, config: Record<string, unknown>
   );
 }
 
-function renderScatterChart(chart: RecommendedChart, config: Record<string, unknown>) {
+function renderScatterChart(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
   const points = config.points as { x: number; y: number }[] | undefined;
-  if (!points) return <EmptyChart />;
+  if (!points) return <EmptyChart compact />;
+
+  const filtered = points.filter((p) => isFinite(p.x) && isFinite(p.y));
 
   return (
     <Plot
       data={[
         {
-          x: points.map((p) => p.x),
-          y: points.map((p) => p.y),
+          x: filtered.map((p) => p.x),
+          y: filtered.map((p) => p.y),
           type: "scatter",
           mode: "markers",
           marker: {
-            size: 10,
+            size: compact ? 6 : 10,
             color: "#3366ff",
             opacity: 0.65,
             line: { width: 1.5, color: "#1a44f5" },
@@ -168,9 +214,9 @@ function renderScatterChart(chart: RecommendedChart, config: Record<string, unkn
   );
 }
 
-function renderHistogram(chart: RecommendedChart, config: Record<string, unknown>) {
+function renderHistogram(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
   const bins = config.bins as { label: string; count: number }[] | undefined;
-  if (!bins) return <EmptyChart />;
+  if (!bins) return <EmptyChart compact />;
 
   return (
     <Plot
@@ -199,9 +245,9 @@ function renderHistogram(chart: RecommendedChart, config: Record<string, unknown
   );
 }
 
-function renderAreaChart(chart: RecommendedChart, config: Record<string, unknown>) {
-  const points = config.points as { x: string; y: number }[] | undefined;
-  if (!points) return <EmptyChart />;
+function renderAreaChart(chart: RecommendedChart, config: Record<string, unknown>, compact?: boolean) {
+  const points = normalizePoints(config);
+  if (!points || points.length === 0) return <EmptyChart compact />;
 
   return (
     <Plot
@@ -228,9 +274,9 @@ function renderAreaChart(chart: RecommendedChart, config: Record<string, unknown
   );
 }
 
-function EmptyChart() {
+function EmptyChart({ compact }: { compact?: boolean }) {
   return (
-    <div className="h-64 flex items-center justify-center text-surface-400 text-sm">
+    <div className={`${compact ? "h-40" : "h-64"} flex items-center justify-center text-surface-400 text-sm`}>
       No chart data available
     </div>
   );

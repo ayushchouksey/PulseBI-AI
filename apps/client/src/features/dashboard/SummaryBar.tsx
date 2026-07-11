@@ -4,8 +4,13 @@ import { Card } from "../../components/ui/Card";
 import { Sparkles } from "lucide-react";
 
 export function SummaryBar() {
-  const { datasetId } = useAppStore();
+  const { datasetId, setPendingQuestion, toggleChat } = useAppStore();
   const { data: summary, isLoading } = useSummary(datasetId);
+
+  const handleSuggestionClick = (question: string) => {
+    setPendingQuestion(question);
+    toggleChat();
+  };
 
   if (isLoading) {
     return (
@@ -31,7 +36,7 @@ export function SummaryBar() {
         </div>
         <div className="flex-1">
           <h2 className="text-base font-bold text-surface-900">
-            {summary.greeting} 👋
+            {summary.greeting}
           </h2>
           <p className="text-sm text-surface-600 mt-1">{summary.summary}</p>
           {summary.highlights.length > 0 && (
@@ -51,7 +56,7 @@ export function SummaryBar() {
               <p className="text-xs text-surface-400 mb-1.5">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {summary.followUpQuestions.map((q, i) => (
-                  <SuggestedQuestion key={i} question={q} />
+                  <SuggestedQuestion key={i} question={q} onClick={() => handleSuggestionClick(q)} />
                 ))}
               </div>
             </div>
@@ -62,9 +67,12 @@ export function SummaryBar() {
   );
 }
 
-function SuggestedQuestion({ question }: { question: string }) {
+function SuggestedQuestion({ question, onClick }: { question: string; onClick: () => void }) {
   return (
-    <button className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-surface-200 text-xs font-medium text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-colors">
+    <button
+      onClick={onClick}
+      className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-surface-200 text-xs font-medium text-brand-600 hover:bg-brand-50 hover:border-brand-200 transition-colors cursor-pointer"
+    >
       {question}
     </button>
   );

@@ -33,7 +33,7 @@ const SUGGESTIONS = [
 ];
 
 export function ChatPanel() {
-  const { chatMessages, toggleChat } = useAppStore();
+  const { chatMessages, toggleChat, pendingQuestion, setPendingQuestion } = useAppStore();
   const [input, setInput] = useState("");
   const askMutation = useAskQuestion();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -41,6 +41,23 @@ export function ChatPanel() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
+
+  // Auto-send pending question from "Try asking" suggestions
+  useEffect(() => {
+    if (pendingQuestion) {
+      const q = pendingQuestion;
+      setPendingQuestion(null);
+      setInput(q);
+      // Use setTimeout to ensure state is set before sending
+      setTimeout(() => {
+        if (q.trim()) {
+          askMutation.mutate(q, {
+            onError: (err) => showToast("error", "Failed", err instanceof Error ? err.message : "Unknown error"),
+          });
+        }
+      }, 50);
+    }
+  }, [pendingQuestion, setPendingQuestion, askMutation]);
 
   const handleSend = () => {
     if (!input.trim() || askMutation.isPending) return;

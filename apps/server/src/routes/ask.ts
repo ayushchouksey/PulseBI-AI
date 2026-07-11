@@ -10,6 +10,13 @@ import { logger } from "../utils/logger.js";
 
 const router = Router();
 
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+}
+
 function buildFallbackSummary(dataset: { raw: { metadata: { rowCount: number; columnCount: number } }; dashboard: DashboardJSON }) {
   const summaryRequest = buildExecutiveSummaryRequest(dataset.dashboard);
   const highlights: string[] = [];
@@ -29,7 +36,7 @@ function buildFallbackSummary(dataset: { raw: { metadata: { rowCount: number; co
   if (highlights.length === 0) highlights.push(`Dataset contains ${dataset.raw.metadata.rowCount} records across ${dataset.raw.metadata.columnCount} columns`);
 
   return {
-    greeting: "Good Morning",
+    greeting: getGreeting(),
     summary: `Analysis of ${dataset.raw.metadata.rowCount} records across ${dataset.raw.metadata.columnCount} columns.`,
     highlights,
     followUpQuestions: ["What are the top performers?", "Show me trends over time", "Any outliers in the data?"],
@@ -49,13 +56,14 @@ router.get("/:datasetId/summary", async (req, res) => {
 
     try {
       const result = await callOllamaJSON<ExecutiveSummary>(prompt);
+      result.greeting = getGreeting();
       res.json({ success: true, data: result });
     } catch {
       const rawText = await callOllama(prompt);
       res.json({
         success: true,
         data: {
-          greeting: "Good Morning",
+          greeting: getGreeting(),
           summary: rawText.slice(0, 500),
           highlights: summaryRequest.topPerformers.slice(0, 3).map((p) => `${p.name}: ${p.value}`),
           followUpQuestions: ["What are the top performers?", "Show me trends over time"],

@@ -17,11 +17,13 @@ interface AppState {
   uploadProgress: number;
   newlyAddedChartId: string | null;
   highlightedChartId: string | null;
+  pendingQuestion: string | null;
 
   setDataset: (id: string, metadata: DatasetMetadata, dashboard: DashboardJSON) => void;
   updateDashboard: (patch: Partial<DashboardJSON>) => void;
   clearNewlyAddedChartId: () => void;
   setHighlightedChartId: (id: string | null) => void;
+  setPendingQuestion: (question: string | null) => void;
   addChatMessage: (message: ChatMessage) => void;
   clearChat: () => void;
   setAnalysis: (analysis: AnalysisResult | null) => void;
@@ -49,6 +51,7 @@ const initialState = {
   uploadProgress: 0,
   newlyAddedChartId: null,
   highlightedChartId: null,
+  pendingQuestion: null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -71,6 +74,8 @@ export const useAppStore = create<AppState>((set) => ({
   clearNewlyAddedChartId: () => set({ newlyAddedChartId: null }),
 
   setHighlightedChartId: (id) => set({ highlightedChartId: id }),
+
+  setPendingQuestion: (question) => set({ pendingQuestion: question }),
 
   addChatMessage: (message) =>
     set((state) => ({ chatMessages: [...state.chatMessages, message] })),
