@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { uploadCSV, getDashboard, askQuestion, getSummary, checkOllamaHealth } from "../services/api";
+import { uploadCSV, getDashboard, askQuestion, getSummary } from "../services/api";
 import { useAppStore } from "../stores/appStore";
 
 export function useUploadCSV() {
@@ -17,19 +17,6 @@ export function useUploadCSV() {
       setUploadProgress(100);
     },
     onError: () => { setUploading(false); setUploadProgress(0); },
-  });
-}
-
-export function useDashboard(datasetId: string | null) {
-  const { setDataset, metadata } = useAppStore();
-  return useQuery({
-    queryKey: ["dashboard", datasetId],
-    queryFn: async () => {
-      const dashboard = await getDashboard(datasetId!);
-      if (metadata) setDataset(datasetId!, metadata, dashboard);
-      return dashboard;
-    },
-    enabled: !!datasetId,
   });
 }
 
@@ -57,49 +44,7 @@ export function useAskQuestion() {
         aiResponse: data,
       });
 
-      // Route by intent level to appropriate UI behavior
       switch (data.intent.level) {
-        case "analysis": {
-          setAnalysis({
-            id: crypto.randomUUID(),
-            question,
-            answer: data.answer,
-            chart: data.analysis?.chart,
-            insights: data.analysis?.insights ?? [],
-            recommendations: data.analysis?.recommendations ?? [],
-            recommendation: data.recommendation,
-            executiveBrief: data.executiveBrief,
-            decisionSupport: data.decisionSupport,
-            highlight: data.highlight,
-            explain: data.explain,
-            timestamp: new Date().toISOString(),
-            pinned: false,
-          });
-          break;
-        }
-
-        case "recommendation":
-        case "executive_brief":
-        case "decision_support":
-        case "explain": {
-          setAnalysis({
-            id: crypto.randomUUID(),
-            question,
-            answer: data.answer,
-            chart: data.analysis?.chart,
-            insights: data.analysis?.insights ?? [],
-            recommendations: data.analysis?.recommendations ?? [],
-            recommendation: data.recommendation,
-            executiveBrief: data.executiveBrief,
-            decisionSupport: data.decisionSupport,
-            highlight: data.highlight,
-            explain: data.explain,
-            timestamp: new Date().toISOString(),
-            pinned: false,
-          });
-          break;
-        }
-
         case "highlight": {
           if (data.highlight?.chartId) {
             setHighlightedChartId(data.highlight.chartId);
@@ -117,8 +62,21 @@ export function useAskQuestion() {
         }
 
         default: {
-          // information mode — no UI changes
-          setAnalysis(null);
+          setAnalysis({
+            id: crypto.randomUUID(),
+            question,
+            answer: data.answer,
+            chart: data.analysis?.chart,
+            insights: data.analysis?.insights ?? [],
+            recommendations: data.analysis?.recommendations ?? [],
+            recommendation: data.recommendation,
+            executiveBrief: data.executiveBrief,
+            decisionSupport: data.decisionSupport,
+            highlight: data.highlight,
+            explain: data.explain,
+            timestamp: new Date().toISOString(),
+            pinned: false,
+          });
         }
       }
     },
@@ -130,14 +88,5 @@ export function useSummary(datasetId: string | null) {
     queryKey: ["summary", datasetId],
     queryFn: () => getSummary(datasetId!),
     enabled: !!datasetId,
-  });
-}
-
-export function useOllamaHealth() {
-  return useQuery({
-    queryKey: ["ollama-health"],
-    queryFn: checkOllamaHealth,
-    refetchInterval: 30000,
-    retry: 1,
   });
 }

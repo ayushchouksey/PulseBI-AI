@@ -31,13 +31,6 @@ export function formatPercent(value: number): string {
   return `${round(value)}%`;
 }
 
-export function formatDelta(current: number, previous: number): string {
-  if (previous === 0) return current > 0 ? "+∞%" : "0%";
-  const pct = ((current - previous) / Math.abs(previous)) * 100;
-  const sign = pct > 0 ? "+" : "";
-  return `${sign}${round(pct)}%`;
-}
-
 export function percentile(sorted: number[], p: number): number {
   if (sorted.length === 0) return 0;
   const idx = (p / 100) * (sorted.length - 1);
@@ -72,15 +65,12 @@ export function generateId(): string {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
-
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+export function formatTitle(name: string): string {
+  return name
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
 }
 
 export function classNames(...classes: (string | false | null | undefined)[]): string {

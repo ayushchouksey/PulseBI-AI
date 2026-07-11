@@ -3,7 +3,7 @@ import type {
   ColumnStatistics, RecommendedChart, BusinessInsight, AnalysisChart,
   RecommendationResult, ExecutiveBrief, DecisionSupport, HighlightAction, ExplainResult,
 } from "@pulsebi/shared-types";
-import { generateId, round, formatCurrency, formatNumber, percentile } from "@pulsebi/shared-utils";
+import { generateId, round, formatCurrency, formatNumber, percentile, formatTitle } from "@pulsebi/shared-utils";
 
 export interface QueryEngineInput {
   intent: DetectedIntent;
@@ -787,14 +787,4 @@ function aggregateByTime(rows: Record<string, unknown>[], dateCol: string, valCo
   return [...map.entries()]
     .map(([period, vals]) => ({ x: period, y: round(vals.reduce((a, b) => a + b, 0)) }))
     .sort((a, b) => a.x.localeCompare(b.x));
-}
-
-function formatTitle(name: string): string {
-  return name.replace(/([A-Z])/g, " $1").replace(/[_-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()).trim();
-}
-
-function formatVal(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return formatCurrency(n);
-  if (Math.abs(n) >= 1000) return formatCurrency(n);
-  return formatNumber(n);
 }

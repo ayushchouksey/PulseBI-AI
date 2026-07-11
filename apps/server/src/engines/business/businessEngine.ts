@@ -11,7 +11,7 @@ import type {
   DatasetMetadata,
   ColumnMetadata,
 } from "@pulsebi/shared-types";
-import { generateId, formatCurrency, formatNumber, formatPercent, round } from "@pulsebi/shared-utils";
+import { generateId, formatCurrency, formatNumber, formatPercent, round, formatTitle } from "@pulsebi/shared-utils";
 
 export interface BIEngineInput {
   metadata: DatasetMetadata;
@@ -363,12 +363,4 @@ function formatValue(value: number, format: string): string {
     case "percentage": return formatPercent(value);
     default: return formatNumber(value);
   }
-}
-
-function formatTitle(name: string): string {
-  return name
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
 }

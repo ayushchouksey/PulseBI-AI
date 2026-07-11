@@ -14,7 +14,6 @@
     "@pulsebi/shared-types": "*",
     "@pulsebi/shared-utils": "*",
     "@tanstack/react-query": "^5.75.5",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.12.1",
     "html2canvas-pro": "^2.2.3",
     "jspdf": "^4.2.1",
@@ -25,8 +24,6 @@
     "react-dropzone": "^14.3.8",
     "react-markdown": "^10.1.0",
     "react-plotly.js": "^2.6.0",
-    "tailwind-merge": "^3.2.0",
-    "zod": "^3.24.4",
     "zustand": "^5.0.5"
   },
   "devDependencies": {
