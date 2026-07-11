@@ -34,7 +34,7 @@ export function useDashboard(datasetId: string | null) {
 }
 
 export function useAskQuestion() {
-  const { datasetId, addChatMessage, setAnalysis, updateDashboard } = useAppStore();
+  const { datasetId, addChatMessage, setAnalysis, updateDashboard, setHighlightedChartId } = useAppStore();
 
   return useMutation({
     mutationFn: (question: string) => {
@@ -57,22 +57,69 @@ export function useAskQuestion() {
         aiResponse: data,
       });
 
-      if (data.analysis && data.intent.level === "analysis") {
-        setAnalysis({
-          id: crypto.randomUUID(),
-          question,
-          answer: data.answer,
-          chart: data.analysis.chart,
-          insights: data.analysis.insights,
-          recommendations: data.analysis.recommendations,
-          timestamp: new Date().toISOString(),
-          pinned: false,
-        });
-      }
+      // Route by intent level to appropriate UI behavior
+      switch (data.intent.level) {
+        case "analysis": {
+          setAnalysis({
+            id: crypto.randomUUID(),
+            question,
+            answer: data.answer,
+            chart: data.analysis?.chart,
+            insights: data.analysis?.insights ?? [],
+            recommendations: data.analysis?.recommendations ?? [],
+            recommendation: data.recommendation,
+            executiveBrief: data.executiveBrief,
+            decisionSupport: data.decisionSupport,
+            highlight: data.highlight,
+            explain: data.explain,
+            timestamp: new Date().toISOString(),
+            pinned: false,
+          });
+          break;
+        }
 
-      if (data.dashboardPatch && data.intent.level === "dashboard_modification") {
-        updateDashboard(data.dashboardPatch);
-        setAnalysis(null);
+        case "recommendation":
+        case "executive_brief":
+        case "decision_support":
+        case "explain": {
+          setAnalysis({
+            id: crypto.randomUUID(),
+            question,
+            answer: data.answer,
+            chart: data.analysis?.chart,
+            insights: data.analysis?.insights ?? [],
+            recommendations: data.analysis?.recommendations ?? [],
+            recommendation: data.recommendation,
+            executiveBrief: data.executiveBrief,
+            decisionSupport: data.decisionSupport,
+            highlight: data.highlight,
+            explain: data.explain,
+            timestamp: new Date().toISOString(),
+            pinned: false,
+          });
+          break;
+        }
+
+        case "highlight": {
+          if (data.highlight?.chartId) {
+            setHighlightedChartId(data.highlight.chartId);
+            setTimeout(() => setHighlightedChartId(null), 5000);
+          }
+          break;
+        }
+
+        case "dashboard_modification": {
+          if (data.dashboardPatch) {
+            updateDashboard(data.dashboardPatch);
+          }
+          setAnalysis(null);
+          break;
+        }
+
+        default: {
+          // information mode — no UI changes
+          setAnalysis(null);
+        }
       }
     },
   });

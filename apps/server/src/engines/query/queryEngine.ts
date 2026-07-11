@@ -1,8 +1,9 @@
 import type {
   DetectedIntent, AIResponse, DashboardJSON, DatasetMetadata,
   ColumnStatistics, RecommendedChart, BusinessInsight, AnalysisChart,
+  RecommendationResult, ExecutiveBrief, DecisionSupport, HighlightAction, ExplainResult,
 } from "@pulsebi/shared-types";
-import { generateId, round, formatCurrency, formatNumber } from "@pulsebi/shared-utils";
+import { generateId, round, formatCurrency, formatNumber, percentile } from "@pulsebi/shared-utils";
 
 export interface QueryEngineInput {
   intent: DetectedIntent;
@@ -21,7 +22,11 @@ export function executeQuery(input: QueryEngineInput): AIResponse {
     .map((c) => c.name);
 
   const dimensionCols = metadata.columns
-    .filter((c) => c.role === "dimension" && c.detectedType !== "date" && c.detectedType !== "id" && c.uniqueCount > 1)
+    .filter((c) => c.role === "dimension" && c.detectedType !== "date" && c.detectedType !== "id" && (c.uniqueCount ?? 0) > 1)
+    .map((c) => c.name);
+
+  const dateCols = metadata.columns
+    .filter((c) => c.detectedType === "date")
     .map((c) => c.name);
 
   const isDimensionCol = (name: string) =>
@@ -53,103 +58,111 @@ export function executeQuery(input: QueryEngineInput): AIResponse {
     return dimensionCols[0] || metadata.columns.find((c) => c.role === "dimension")?.name || metadata.columns[0]?.name || "";
   }
 
-  // ─── INFORMATION: answer only, no chart, no dashboard change ───
-  if (intent.level === "information") {
-    return executeInformation(intent, { resolveMetric, resolveDimension, findLabelCol, numericCols, metadata, columnStatistics, dashboard, rows });
-  }
+  // ─── ROUTE BY INTENT LEVEL ────────────────────────────────────
 
-  // ─── ANALYSIS: answer + temporary chart + insights ───
-  if (intent.level === "analysis") {
-    return executeAnalysis(intent, input, { resolveMetric, resolveDimension, findLabelCol, numericCols, dimensionCols });
+  switch (intent.level) {
+    case "information":
+      return executeInformation(intent, input, { resolveMetric, resolveDimension, findLabelCol, numericCols, dimensionCols });
+    case "analysis":
+      return executeAnalysis(intent, input, { resolveMetric, resolveDimension, findLabelCol, numericCols, dimensionCols });
+    case "recommendation":
+      return executeRecommendation(intent, input, { numericCols, dimensionCols, dateCols });
+    case "executive_brief":
+      return executeExecutiveBrief(intent, input, { numericCols, dimensionCols });
+    case "decision_support":
+      return executeDecisionSupport(intent, input, { numericCols, dimensionCols });
+    case "highlight":
+      return executeHighlight(intent, input, { resolveMetric, resolveDimension, numericCols, dimensionCols });
+    case "explain":
+      return executeExplain(intent, input, { numericCols, dimensionCols, dateCols });
+    case "dashboard_modification":
+      return executeDashboardModification(intent, input, { resolveMetric, resolveDimension, isDimensionCol, numericCols, dimensionCols });
+    default:
+      return executeInformation(intent, input, { resolveMetric, resolveDimension, findLabelCol, numericCols, dimensionCols });
   }
-
-  // ─── DASHBOARD_MODIFICATION: answer + dashboard patch ───
-  return executeDashboardModification(intent, input, { resolveMetric, resolveDimension, findLabelCol, numericCols, dimensionCols });
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 1: INFORMATION — Answer only, no dashboard change
+// ═══════════════════════════════════════════════════════════════════
 
 function executeInformation(
   intent: DetectedIntent,
-  ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; findLabelCol: () => string; numericCols: string[]; metadata: DatasetMetadata; columnStatistics: ColumnStatistics[]; dashboard: DashboardJSON; rows: Record<string, unknown>[] }
+  input: QueryEngineInput,
+  ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; findLabelCol: () => string; numericCols: string[]; dimensionCols: string[] }
 ): AIResponse {
-  const { resolveMetric, resolveDimension, findLabelCol, metadata, columnStatistics, dashboard, rows } = ctx;
+  const { resolveMetric, resolveDimension, findLabelCol, numericCols } = ctx;
+  const { metadata, columnStatistics, rows } = input;
   let answer = "";
 
+  const cs = columnStatistics.find((s) => s.columnName === resolveMetric());
+
   switch (intent.type) {
-    case "highest":
-    case "top": {
+    case "sum": {
       const col = resolveMetric();
-      if (!col) { answer = "No numeric column found to analyze."; break; }
-      const limit = intent.limit || 5;
-      const sorted = [...rows].sort((a, b) => Number(b[col]) - Number(a[col]));
-      const data = sorted.slice(0, limit);
-      const labelCol = findLabelCol();
-      answer = `Top ${limit} by ${col}:\n` +
-        data.map((r, i) => `${i + 1}. ${r[labelCol] || "N/A"} — ${col}: ${formatVal(Number(r[col]))}`).join("\n");
-      break;
-    }
-    case "lowest":
-    case "bottom": {
-      const col = resolveMetric();
-      if (!col) { answer = "No numeric column found to analyze."; break; }
-      const limit = intent.limit || 5;
-      const sorted = [...rows].sort((a, b) => Number(a[col]) - Number(b[col]));
-      const data = sorted.slice(0, limit);
-      const labelCol = findLabelCol();
-      answer = `Bottom ${limit} by ${col}:\n` +
-        data.map((r, i) => `${i + 1}. ${r[labelCol] || "N/A"} — ${col}: ${formatVal(Number(r[col]))}`).join("\n");
+      const stats = columnStatistics.find((s) => s.columnName === col);
+      if (stats) {
+        answer = `**${formatTitle(col!)}**: ${formatCurrency(stats.stats.sum)}`;
+        const pctOfTotal = numericCols.length > 1
+          ? `\n\nThis represents ${((stats.stats.sum / numericCols.reduce((s, c) => s + (columnStatistics.find((x) => x.columnName === c)?.stats.sum || 0), 0)) * 100).toFixed(1)}% of all numeric totals.`
+          : "";
+        answer += pctOfTotal;
+      }
       break;
     }
     case "average": {
       const col = resolveMetric();
-      if (!col) { answer = "No numeric column found."; break; }
-      const cs = columnStatistics.find((s) => s.columnName === col);
-      answer = `The average ${col} is ${formatVal(cs?.stats.avg ?? 0)} (across ${cs?.stats.count ?? rows.length} records).`;
+      const stats = columnStatistics.find((s) => s.columnName === col);
+      if (stats) {
+        answer = `**${formatTitle(col!)}** average: ${formatCurrency(stats.stats.avg)}\n\nMedian: ${formatCurrency(stats.stats.median)} (middle value across ${stats.stats.count} records)`;
+      }
+      break;
+    }
+    case "highest": {
+      const col = resolveMetric();
+      const dim = resolveDimension();
+      const stats = columnStatistics.find((s) => s.columnName === col);
+      if (stats && dim) {
+        const grouped = aggregateByDimension(rows, dim, col!);
+        const top = grouped[0];
+        if (top) {
+          answer = `**${top[dim]}** has the highest ${formatTitle(col!)} at ${formatCurrency(top.total as number)}`;
+          if (grouped.length > 1) {
+            const diff = ((top.total as number) - (grouped[1].total as number)) / (grouped[1].total as number) * 100;
+            answer += `\n\nThis is ${diff.toFixed(0)}% higher than ${grouped[1][dim]} (${formatCurrency(grouped[1].total as number)})`;
+          }
+        }
+      } else if (stats) {
+        answer = `**Highest ${formatTitle(col!)}**: ${formatCurrency(stats.stats.max)}`;
+      }
+      break;
+    }
+    case "lowest": {
+      const col = resolveMetric();
+      const dim = resolveDimension();
+      const stats = columnStatistics.find((s) => s.columnName === col);
+      if (stats && dim) {
+        const grouped = aggregateByDimension(rows, dim, col!);
+        const bottom = grouped[grouped.length - 1];
+        if (bottom) {
+          answer = `**${bottom[dim]}** has the lowest ${formatTitle(col!)} at ${formatCurrency(bottom.total as number)}`;
+        }
+      } else if (stats) {
+        answer = `**Lowest ${formatTitle(col!)}**: ${formatCurrency(stats.stats.min)}`;
+      }
       break;
     }
     case "count": {
-      const col = resolveMetric();
-      answer = col ? `Total count of ${col}: ${columnStatistics.find((s) => s.columnName === col)?.stats.count ?? rows.length}` : `Total records: ${rows.length}`;
-      break;
-    }
-    case "sum": {
-      const col = resolveMetric();
-      if (!col) { answer = "No numeric column found."; break; }
-      const cs = columnStatistics.find((s) => s.columnName === col);
-      answer = `Total sum of ${col}: ${formatVal(cs?.stats.sum ?? 0)}`;
-      break;
-    }
-    case "explain": {
-      const col = resolveMetric();
-      if (!col) { answer = `Dataset: ${rows.length} records, ${metadata.columns.length} columns.`; break; }
-      const cs = columnStatistics.find((s) => s.columnName === col);
-      if (cs) {
-        answer = `${col} summary:\n  Count: ${cs.stats.count}\n  Sum: ${formatVal(cs.stats.sum)}\n  Average: ${formatVal(cs.stats.avg)}\n  Median: ${formatVal(cs.stats.median)}\n  Min: ${formatVal(cs.stats.min)}\n  Max: ${formatVal(cs.stats.max)}\n  Outliers: ${cs.stats.outliers}`;
-      } else {
-        answer = `No statistics available for "${col}".`;
-      }
-      break;
-    }
-    case "summary": {
-      const parts: string[] = [`Dataset: ${metadata.rowCount} records, ${metadata.columnCount} columns.`];
-      const measures = metadata.columns.filter((c) => c.role === "measure");
-      for (const m of measures.slice(0, 3)) {
-        const cs = columnStatistics.find((s) => s.columnName === m.name);
-        if (cs) parts.push(`${m.name}: total ${formatVal(cs.stats.sum)}, avg ${formatVal(cs.stats.avg)}`);
-      }
-      answer = parts.join("\n");
+      answer = `**${rows.length}** records in this dataset`;
       break;
     }
     default: {
-      const col = intent.metric || intent.dimension;
-      if (col) {
-        const cs = columnStatistics.find((s) => s.columnName === col);
-        if (cs) {
-          answer = `${col}:\n  Count: ${cs.stats.count}\n  Avg: ${formatVal(cs.stats.avg)}\n  Min: ${formatVal(cs.stats.min)}\n  Max: ${formatVal(cs.stats.max)}`;
-        } else {
-          answer = `Column "${col}" not found. Available: ${metadata.columns.map((c) => c.name).join(", ")}`;
-        }
+      const col = resolveMetric();
+      const stats = columnStatistics.find((s) => s.columnName === col);
+      if (stats) {
+        answer = `**${formatTitle(col!)}**: ${formatCurrency(stats.stats.sum)}\n\nAcross ${stats.stats.count} records, ranging from ${formatCurrency(stats.stats.min)} to ${formatCurrency(stats.stats.max)}`;
       } else {
-        answer = `Dataset has ${rows.length} records with ${metadata.columns.length} columns.`;
+        answer = `Based on the data, I found ${rows.length} records across ${metadata.columns.length} columns.`;
       }
     }
   }
@@ -157,99 +170,73 @@ function executeInformation(
   return { intent, answer };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MODE 2: ANALYSIS — Temporary analysis card + optional chart
+// ═══════════════════════════════════════════════════════════════════
+
 function executeAnalysis(
   intent: DetectedIntent,
   input: QueryEngineInput,
   ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; findLabelCol: () => string; numericCols: string[]; dimensionCols: string[] }
 ): AIResponse {
-  const { resolveMetric, resolveDimension, dimensionCols } = ctx;
-  const { metadata, columnStatistics, dashboard, rows } = input;
+  const { resolveMetric, resolveDimension, findLabelCol, numericCols } = ctx;
+  const { metadata, columnStatistics, rows } = input;
+
   let answer = "";
   let chart: RecommendedChart | undefined;
   const insights: BusinessInsight[] = [];
   const recommendations: string[] = [];
 
   switch (intent.type) {
+    case "trend": {
+      const col = resolveMetric();
+      const dateCol = metadata.columns.find((c) => c.detectedType === "date")?.name;
+      if (col && dateCol) {
+        const timeSeries = aggregateByTime(rows, dateCol, col);
+        chart = {
+          id: generateId(), type: "line",
+          title: `${formatTitle(col)} Over Time`,
+          description: `Trend analysis for ${col.toLowerCase()}`,
+          xAxis: dateCol, yAxis: col,
+          dataSource: "analysis", priority: 1,
+          config: { points: timeSeries },
+        };
+        const firstVal = timeSeries[0]?.y || 0;
+        const lastVal = timeSeries[timeSeries.length - 1]?.y || 0;
+        const change = firstVal > 0 ? ((lastVal - firstVal) / firstVal * 100) : 0;
+        answer = `${formatTitle(col)} ${change >= 0 ? "increased" : "decreased"} by ${Math.abs(change).toFixed(1)}% over the period.`;
+        insights.push({
+          id: generateId(), type: change >= 0 ? "positive" : "negative",
+          title: `${formatTitle(col)} Trend`, description: `${change >= 0 ? "Up" : "Down"} ${Math.abs(change).toFixed(1)}% overall`,
+          metric: col, value: lastVal, severity: Math.abs(change) > 10 ? "high" : "medium",
+        });
+        recommendations.push(`Investigate the ${change >= 0 ? "growth drivers" : "root cause of decline"}`);
+      }
+      break;
+    }
     case "compare": {
       const col = resolveMetric();
       const dim = resolveDimension();
-      if (!col || !dim) { answer = "Unable to determine comparison columns."; break; }
-      const grouped = aggregateByDimension(rows, dim, col);
-      answer = `${col} by ${dim}:\n` + grouped.map((g) => `  ${g[dim]}: ${formatVal(g.total as number)}`).join("\n");
-
-      chart = {
-        id: generateId(),
-        type: grouped.length <= 6 ? "pie" : "bar",
-        title: `${formatTitle(col)} by ${formatTitle(dim)}`,
-        description: `Comparison of ${col} across ${dim}`,
-        xAxis: dim, yAxis: col, groupBy: dim,
-        dataSource: "analysis", priority: 1,
-        config: { data: grouped },
-      };
-
-      if (grouped.length >= 2) {
-        const top = grouped[0];
-        const bottom = grouped[grouped.length - 1];
-        insights.push({
-          id: generateId(), type: "info",
-          title: `${top[dim]} leads with ${formatVal(top.total as number)}`,
-          description: `${bottom[dim]} has the lowest at ${formatVal(bottom.total as number)}`,
-          severity: "medium",
-        });
-        recommendations.push(`Investigate why ${bottom[dim]} underperforms`);
-      }
-      break;
-    }
-    case "trend": {
-      const col = intent.metric || resolveMetric();
-      if (!col) { answer = "No metric specified for trend analysis."; break; }
-      const trendChart = dashboard.charts.find((c) => c.type === "line" && c.yAxis === col);
-      if (trendChart) {
-        const points = trendChart.config?.points as { x: string; y: number }[];
-        if (points && points.length >= 2) {
-          const change = ((points[points.length - 1].y - points[0].y) / Math.abs(points[0].y || 1)) * 100;
-          answer = `Trend for ${col}: ${change > 0 ? "+" : ""}${change.toFixed(1)}% change over time.`;
-          chart = {
-            id: generateId(), type: "line",
-            title: `${formatTitle(col)} Trend`,
-            description: `${change > 0 ? "Increasing" : "Decreasing"} trend over time`,
-            xAxis: "Period", yAxis: col,
-            dataSource: "analysis", priority: 1,
-            config: { points },
-          };
-        } else {
-          answer = `Limited data points for ${col} trend.`;
-        }
-      } else {
-        answer = `No trend data available for ${col || "this metric"}.`;
-      }
-      break;
-    }
-    case "explain": {
-      const col = resolveMetric();
-      if (!col) { answer = `Dataset: ${rows.length} records.`; break; }
-      const cs = columnStatistics.find((s) => s.columnName === col);
-      if (cs) {
-        answer = `${col} detailed analysis:\n  Range: ${formatVal(cs.stats.min)} to ${formatVal(cs.stats.max)}\n  Average: ${formatVal(cs.stats.avg)}\n  Median: ${formatVal(cs.stats.median)}\n  Standard Deviation: ${formatVal(cs.stats.stdDev)}\n  Outliers: ${cs.stats.outliers}`;
-
-        if (cs.stats.outliers > 0) {
+      if (col && dim) {
+        const grouped = aggregateByDimension(rows, dim, col);
+        chart = {
+          id: generateId(), type: "bar",
+          title: `${formatTitle(col)} by ${formatTitle(dim)}`,
+          description: `Comparison across ${dim.toLowerCase()}`,
+          xAxis: dim, yAxis: col, groupBy: dim,
+          dataSource: "analysis", priority: 1,
+          config: { data: grouped },
+        };
+        const max = grouped[0];
+        const min = grouped[grouped.length - 1];
+        if (max && min) {
+          const diff = ((max.total as number) - (min.total as number)) / (min.total as number) * 100;
+          answer = `Comparing ${formatTitle(col)} across ${formatTitle(dim)}:\n\n${max[dim]} leads at ${formatCurrency(max.total as number)}, which is ${diff.toFixed(0)}% higher than ${min[dim]} (${formatCurrency(min.total as number)}).`;
           insights.push({
-            id: generateId(), type: "warning",
-            title: `${cs.stats.outliers} outlier(s) detected in ${col}`,
-            description: `Values outside IQR range: ${cs.stats.outlierValues.slice(0, 5).map(formatVal).join(", ")}`,
-            metric: col, value: cs.stats.outliers, severity: "high",
+            id: generateId(), type: "info", title: "Performance Gap",
+            description: `${diff.toFixed(0)}% difference between highest and lowest`,
+            severity: diff > 30 ? "high" : "medium",
           });
-          recommendations.push(`Review the ${cs.stats.outliers} outlier data points in ${col}`);
-        }
-
-        if (cs.histogram && cs.histogram.length > 0) {
-          chart = {
-            id: generateId(), type: "histogram",
-            title: `Distribution of ${formatTitle(col)}`,
-            description: `Value distribution for ${col}`,
-            xAxis: col, dataSource: "analysis", priority: 1,
-            config: { bins: cs.histogram },
-          };
         }
       }
       break;
@@ -259,15 +246,15 @@ function executeAnalysis(
       const dim = resolveDimension();
       if (col && dim) {
         const grouped = aggregateByDimension(rows, dim, col);
-        answer = `${col} by ${dim}:\n` + grouped.map((g) => `  ${g[dim]}: ${formatVal(g.total as number)}`).join("\n");
         chart = {
           id: generateId(), type: "bar",
           title: `${formatTitle(col)} by ${formatTitle(dim)}`,
-          description: `Breakdown of ${col} across ${dim}`,
+          description: `Breakdown of ${col.toLowerCase()} across ${dim.toLowerCase()}`,
           xAxis: dim, yAxis: col, groupBy: dim,
           dataSource: "analysis", priority: 1,
           config: { data: grouped },
         };
+        answer = `${formatTitle(col)} by ${formatTitle(dim)}:\n` + grouped.map((g) => `  ${g[dim]}: ${formatCurrency(g.total as number)}`).join("\n");
       } else {
         answer = `Analysis: ${rows.length} records analyzed.`;
       }
@@ -281,12 +268,368 @@ function executeAnalysis(
   return { intent, answer, analysis };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// MODE 3: RECOMMENDATION — Business priorities + expected impact
+// ═══════════════════════════════════════════════════════════════════
+
+function executeRecommendation(
+  intent: DetectedIntent,
+  input: QueryEngineInput,
+  ctx: { numericCols: string[]; dimensionCols: string[]; dateCols: string[] }
+): AIResponse {
+  const { columnStatistics, dashboard, rows } = input;
+  const priorities: RecommendationResult["priorities"] = [];
+
+  // Find weakest dimension performer
+  for (const dim of ctx.dimensionCols.slice(0, 2)) {
+    const col = ctx.numericCols[0];
+    if (!col) continue;
+    const grouped = aggregateByDimension(rows, dim, col);
+    if (grouped.length >= 2) {
+      const bottom = grouped[grouped.length - 1];
+      const top = grouped[0];
+      const gap = ((top.total as number) - (bottom.total as number)) / (top.total as number) * 100;
+      if (gap > 15) {
+        priorities.push({
+          title: `Improve ${bottom[dim]} ${formatTitle(col)}`,
+          description: `${bottom[dim]} is ${gap.toFixed(0)}% behind ${top[dim]}. Focus on closing this gap.`,
+          impact: gap > 40 ? "high" : "medium",
+          metric: col,
+          currentValue: formatCurrency(bottom.total as number),
+        });
+      }
+    }
+  }
+
+  // Find declining metrics
+  for (const cs of columnStatistics.filter((s) => ctx.numericCols.includes(s.columnName)).slice(0, 2)) {
+    if (cs.stats.stdDev > cs.stats.avg * 0.3) {
+      priorities.push({
+        title: `Stabilize ${formatTitle(cs.columnName)}`,
+        description: `High variability (σ=${formatCurrency(cs.stats.stdDev)}) suggests inconsistent performance.`,
+        impact: "medium",
+        metric: cs.columnName,
+        currentValue: `Avg: ${formatCurrency(cs.stats.avg)}`,
+      });
+    }
+  }
+
+  // If no specific findings, provide general guidance
+  if (priorities.length === 0) {
+    priorities.push({
+      title: "Monitor key metrics",
+      description: "Current performance is stable. Continue tracking trends.",
+      impact: "low",
+    });
+  }
+
+  const highImpactCount = priorities.filter((p) => p.impact === "high").length;
+  const result: RecommendationResult = {
+    title: "Business Priorities",
+    priorities: priorities.slice(0, 4),
+    expectedImpact: highImpactCount > 0 ? "high" : "medium",
+    reasoning: `Based on analysis of ${rows.length} records across ${ctx.dimensionCols.length} dimensions.`,
+  };
+
+  const answer = priorities.map((p, i) =>
+    `${i + 1}. **${p.title}** — ${p.description}`
+  ).join("\n\n");
+
+  return { intent, answer, recommendation: result };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 4: EXECUTIVE BRIEF — CEO-style brief with metrics
+// ═══════════════════════════════════════════════════════════════════
+
+function executeExecutiveBrief(
+  intent: DetectedIntent,
+  input: QueryEngineInput,
+  ctx: { numericCols: string[]; dimensionCols: string[] }
+): AIResponse {
+  const { columnStatistics, dashboard, rows } = input;
+
+  const metrics: ExecutiveBrief["metrics"] = [];
+  const risks: string[] = [];
+  const opportunities: string[] = [];
+
+  // Build metrics from KPIs and column statistics
+  for (const kpi of dashboard.kpis.slice(0, 4)) {
+    metrics.push({
+      label: kpi.title,
+      value: kpi.formattedValue,
+      change: kpi.changePercent,
+      direction: kpi.trend,
+    });
+  }
+
+  // Fallback if no KPIs
+  if (metrics.length === 0) {
+    for (const cs of columnStatistics.filter((s) => ctx.numericCols.includes(s.columnName)).slice(0, 4)) {
+      metrics.push({
+        label: formatTitle(cs.columnName),
+        value: formatCurrency(cs.stats.sum),
+        direction: cs.stats.avg > cs.stats.median ? "up" : "down",
+      });
+    }
+  }
+
+  // Identify risks (negative insights)
+  const negInsights = dashboard.insights.filter((i) => i.type === "negative" || i.type === "warning");
+  for (const ins of negInsights.slice(0, 2)) {
+    risks.push(`${ins.title}: ${ins.description}`);
+  }
+  if (risks.length === 0) risks.push("No significant risks detected");
+
+  // Identify opportunities (positive insights + top performers)
+  const posInsights = dashboard.insights.filter((i) => i.type === "positive");
+  for (const ins of posInsights.slice(0, 2)) {
+    opportunities.push(`${ins.title}: ${ins.description}`);
+  }
+  if (opportunities.length === 0 && dashboard.kpis.length > 0) {
+    const topKpi = dashboard.kpis.reduce((best, kpi) =>
+      (kpi.changePercent ?? 0) > (best.changePercent ?? 0) ? kpi : best, dashboard.kpis[0]);
+    if (topKpi.changePercent && topKpi.changePercent > 0) {
+      opportunities.push(`${topKpi.title} showing strong growth (+${topKpi.changePercent.toFixed(1)}%)`);
+    }
+  }
+
+  const result: ExecutiveBrief = {
+    title: "Executive Brief",
+    metrics,
+    risks,
+    opportunities,
+    recommendation: risks[0] !== "No significant risks detected"
+      ? `Investigate: ${risks[0].split(":")[0]}`
+      : "Continue current trajectory",
+  };
+
+  const metricsStr = metrics.map((m) =>
+    `**${m.label}**: ${m.value}${m.change !== undefined ? ` (${m.direction === "up" ? "↑" : "↓"}${Math.abs(m.change).toFixed(1)}%)` : ""}`
+  ).join("\n");
+
+  const answer = `${metricsStr}\n\n**Risks**: ${risks.join("; ")}\n\n**Opportunities**: ${opportunities.join("; ")}\n\n**Recommendation**: ${result.recommendation}`;
+
+  return { intent, answer, executiveBrief: result };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 5: DECISION SUPPORT — Data-backed decision with confidence
+// ═══════════════════════════════════════════════════════════════════
+
+function executeDecisionSupport(
+  intent: DetectedIntent,
+  input: QueryEngineInput,
+  ctx: { numericCols: string[]; dimensionCols: string[] }
+): AIResponse {
+  const { columnStatistics, dashboard, rows, metadata } = input;
+
+  const factors: DecisionSupport["factors"] = [];
+  const metric = intent.metric || ctx.numericCols[0];
+  const cs = columnStatistics.find((s) => s.columnName === metric);
+
+  if (cs) {
+    factors.push({
+      label: formatTitle(metric),
+      value: formatCurrency(cs.stats.sum),
+      direction: cs.stats.avg > cs.stats.median ? "up" : "down",
+    });
+    factors.push({
+      label: "Average",
+      value: formatCurrency(cs.stats.avg),
+    });
+    factors.push({
+      label: "Consistency",
+      value: cs.stats.cv < 0.3 ? "Stable" : "Volatile",
+    });
+  }
+
+  // Check if there's a positive trend
+  const dim = ctx.dimensionCols[0];
+  if (dim && metric) {
+    const grouped = aggregateByDimension(rows, dim, metric);
+    if (grouped.length >= 2) {
+      const top = grouped[0];
+      factors.push({
+        label: `Top ${formatTitle(dim)}`,
+        value: `${top[dim]} (${formatCurrency(top.total as number)})`,
+        direction: "up",
+      });
+    }
+  }
+
+  // Determine verdict based on data
+  let verdict: DecisionSupport["verdict"] = "conditional";
+  let confidence: DecisionSupport["confidence"] = "medium";
+  const positiveFactors = factors.filter((f) => f.direction === "up").length;
+  const totalFactors = factors.length;
+
+  if (positiveFactors / totalFactors > 0.6) {
+    verdict = "yes";
+    confidence = totalFactors >= 3 ? "high" : "medium";
+  } else if (positiveFactors / totalFactors < 0.3) {
+    verdict = "no";
+    confidence = totalFactors >= 3 ? "high" : "medium";
+  }
+
+  const result: DecisionSupport = {
+    title: "Decision Support",
+    question: input.question,
+    verdict,
+    confidence,
+    factors,
+    reasoning: `Based on ${totalFactors} data factors, ${positiveFactors} indicate positive trends.`,
+  };
+
+  const verdictText = verdict === "yes" ? "Appears favorable" : verdict === "no" ? "May not be advisable" : "Requires further analysis";
+  const answer = `**${verdictText}** (Confidence: ${confidence})\n\n` +
+    factors.map((f) => `**${f.label}**: ${f.value}${f.direction ? ` (${f.direction === "up" ? "↑" : "↓"})` : ""}`).join("\n") +
+    `\n\n${result.reasoning}`;
+
+  return { intent, answer, decisionSupport: result };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 6: HIGHLIGHT — Point to existing chart, glow effect
+// ═══════════════════════════════════════════════════════════════════
+
+function executeHighlight(
+  intent: DetectedIntent,
+  input: QueryEngineInput,
+  ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; numericCols: string[]; dimensionCols: string[] }
+): AIResponse {
+  const { resolveMetric, resolveDimension } = ctx;
+  const { dashboard, columnStatistics, rows } = input;
+
+  // Find the best matching existing chart
+  const metric = resolveMetric();
+  const dim = resolveDimension();
+  let matchedChart = dashboard.charts.find((c) => {
+    const titleLower = c.title.toLowerCase();
+    if (metric && titleLower.includes(metric.toLowerCase())) return true;
+    if (dim && titleLower.includes(dim.toLowerCase())) return true;
+    return false;
+  });
+
+  // Fallback to first chart if no match
+  if (!matchedChart && dashboard.charts.length > 0) {
+    matchedChart = dashboard.charts[0];
+  }
+
+  if (!matchedChart) {
+    return {
+      intent,
+      answer: "No existing charts to highlight. Try asking me to create one first.",
+    };
+  }
+
+  // Find the best performer in the highlighted chart's data
+  const data = matchedChart.config.data as { name: string; value: number }[] | undefined;
+  const points = matchedChart.config.points as { x: string; y: number }[] | undefined;
+
+  let highlightData: { label: string; value: string }[] = [];
+  let insight = "";
+
+  if (data && data.length > 0) {
+    const sorted = [...data].sort((a, b) => b.value - a.value);
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    highlightData = [{ label: "Best", value: `${best.name}: ${formatCurrency(best.value)}` }];
+    if (sorted.length > 1) {
+      const diff = ((best.value - worst.value) / worst.value * 100).toFixed(0);
+      insight = `${best.name} leads with ${formatCurrency(best.value)}, ${diff}% higher than ${worst.name}.`;
+    }
+  } else if (points && points.length > 0) {
+    const sorted = [...points].sort((a, b) => b.y - a.y);
+    const best = sorted[0];
+    highlightData = [{ label: "Peak", value: `${best.x}: ${formatCurrency(best.y)}` }];
+    insight = `Peak value of ${formatCurrency(best.y)} at ${best.x}.`;
+  }
+
+  const result: HighlightAction = {
+    chartId: matchedChart.id,
+    chartTitle: matchedChart.title,
+    highlightData,
+    Insight: insight || `Highlighting ${matchedChart.title}.`,
+  };
+
+  return {
+    intent,
+    answer: `**${matchedChart.title}**\n\n${insight || "Here's the chart you asked about."}`,
+    highlight: result,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 7: EXPLAIN — Text-only explanation (no chart)
+// ═══════════════════════════════════════════════════════════════════
+
+function executeExplain(
+  intent: DetectedIntent,
+  input: QueryEngineInput,
+  ctx: { numericCols: string[]; dimensionCols: string[]; dateCols: string[] }
+): AIResponse {
+  const { columnStatistics, rows, dashboard } = input;
+
+  const col = intent.metric || ctx.numericCols[0];
+  const cs = columnStatistics.find((s) => s.columnName === col);
+
+  const causes: string[] = [];
+  let recommendation = "";
+
+  if (cs) {
+    // Analyze distribution for seasonality / patterns
+    if (cs.stats.cv > 0.4) {
+      causes.push("High variability suggests inconsistent performance across periods");
+    }
+    if (cs.stats.outliers > 0) {
+      causes.push(`${cs.stats.outliers} outlier values detected (range: ${formatCurrency(cs.stats.min)} to ${formatCurrency(cs.stats.max)})`);
+    }
+    if (cs.topValues && cs.topValues.length > 0) {
+      const topContributor = cs.topValues[0];
+      causes.push(`${topContributor.name} contributes ${topContributor.percentage.toFixed(0)}% of total ${formatTitle(col)}`);
+    }
+
+    // Check for trend via dimension grouping
+    const dim = ctx.dimensionCols[0];
+    if (dim) {
+      const grouped = aggregateByDimension(rows, dim, col);
+      if (grouped.length >= 2) {
+        const top = grouped[0];
+        const bottom = grouped[grouped.length - 1];
+        causes.push(`${top[dim]} leads with ${formatCurrency(top.total as number)}, while ${bottom[dim]} trails at ${formatCurrency(bottom.total as number)}`);
+      }
+    }
+  }
+
+  if (causes.length === 0) {
+    causes.push(`Based on ${rows.length} records, the data shows normal distribution`);
+  }
+
+  recommendation = `Review the factors above to identify actionable improvements.`;
+
+  const result: ExplainResult = {
+    title: `Explaining ${formatTitle(col || "metric")}`,
+    explanation: causes.join(". "),
+    causes,
+    recommendation,
+  };
+
+  const answer = `**${result.title}**\n\n**Possible causes:**\n${causes.map((c) => `• ${c}`).join("\n")}\n\n**Recommendation:** ${recommendation}`;
+
+  return { intent, answer, explain: result };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODE 8: DASHBOARD MODIFICATION — Permanent change
+// ═══════════════════════════════════════════════════════════════════
+
 function executeDashboardModification(
   intent: DetectedIntent,
   input: QueryEngineInput,
-  ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; findLabelCol: () => string; numericCols: string[]; dimensionCols: string[] }
+  ctx: { resolveMetric: () => string | undefined; resolveDimension: () => string | undefined; isDimensionCol: (name: string) => boolean; numericCols: string[]; dimensionCols: string[] }
 ): AIResponse {
-  const { resolveMetric, resolveDimension } = ctx;
+  const { resolveMetric, resolveDimension, isDimensionCol } = ctx;
   const { metadata, columnStatistics, dashboard, rows } = input;
   let answer = "";
   let dashboardPatch: Partial<DashboardJSON> | undefined;
@@ -354,19 +697,33 @@ function executeDashboardModification(
     }
     case "kpi_add": {
       const col = resolveMetric();
-      if (col) {
+      const dimCol = resolveDimension();
+      // If the user mentioned a dimension name (like "Customer"), treat it as a chart_add instead
+      if (intent.metric && isDimensionCol(intent.metric) && dimCol) {
+        const grouped = aggregateByDimension(rows, dimCol, col!);
+        const newChart: RecommendedChart = {
+          id: generateId(), type: "bar",
+          title: `${formatTitle(col!)} by ${formatTitle(dimCol)}`,
+          description: `Added via conversation`,
+          xAxis: dimCol, yAxis: col, groupBy: dimCol,
+          dataSource: "dashboard_modification", priority: dashboard.charts.length + 1,
+          config: { data: grouped },
+        };
+        dashboardPatch = { charts: [...dashboard.charts, newChart] };
+        answer = `Added "${newChart.title}" chart to your dashboard.`;
+      } else if (col) {
         const cs = columnStatistics.find((s) => s.columnName === col);
         if (cs) {
           const newKpi = {
             id: generateId(), title: formatTitle(col),
-            value: cs.stats.sum, formattedValue: formatVal(cs.stats.sum),
-            format: "number" as const, description: `Total ${col}`,
+            value: cs.stats.sum, formattedValue: formatCurrency(cs.stats.sum),
+            format: "currency" as const, description: `Total ${col}`,
           };
           dashboardPatch = { kpis: [...dashboard.kpis, newKpi] };
           answer = `Added "${col}" KPI to your dashboard.`;
         }
       } else {
-        answer = "Please specify which metric to add as a KPI.";
+        answer = "Please specify which numeric metric to add as a KPI.";
       }
       break;
     }
@@ -396,6 +753,10 @@ function executeDashboardModification(
   return { intent, answer, dashboardPatch };
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════════════════════════════════
+
 function aggregateByDimension(rows: Record<string, unknown>[], dimCol: string, valCol: string): Record<string, unknown>[] {
   const map = new Map<string, number[]>();
   for (const row of rows) {
@@ -409,6 +770,23 @@ function aggregateByDimension(rows: Record<string, unknown>[], dimCol: string, v
   return [...map.entries()]
     .map(([name, vals]) => ({ [dimCol]: name, total: round(vals.reduce((a, b) => a + b, 0)), count: vals.length }))
     .sort((a, b) => (b.total as number) - (a.total as number));
+}
+
+function aggregateByTime(rows: Record<string, unknown>[], dateCol: string, valCol: string): { x: string; y: number }[] {
+  const map = new Map<string, number[]>();
+  for (const row of rows) {
+    const raw = String(row[dateCol] || "");
+    const date = new Date(raw);
+    const key = isNaN(date.getTime()) ? raw.slice(0, 7) : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const val = Number(row[valCol]);
+    if (!isNaN(val)) {
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(val);
+    }
+  }
+  return [...map.entries()]
+    .map(([period, vals]) => ({ x: period, y: round(vals.reduce((a, b) => a + b, 0)) }))
+    .sort((a, b) => a.x.localeCompare(b.x));
 }
 
 function formatTitle(name: string): string {

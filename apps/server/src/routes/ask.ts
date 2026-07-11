@@ -102,13 +102,15 @@ router.post("/:datasetId/ask", async (req, res) => {
       };
     }
 
-    // Step 3: For dashboard modifications, use Node answer directly (Ollama doesn't know dashboard state)
-    if (intent.level === "dashboard_modification") {
+    // Step 3: For modes that produce structured responses, use Node answer directly
+    // These modes have rich, data-driven responses that Ollama would only dilute
+    const structuredModes = ["recommendation", "executive_brief", "decision_support", "highlight", "explain", "dashboard_modification"];
+    if (structuredModes.includes(intent.level)) {
       res.json({ success: true, data: aiResponse });
       return;
     }
 
-    // Step 4: If Ollama available, let it explain the verified results
+    // Step 4: For information & analysis, optionally let Ollama explain
     const ollamaAvailable = await checkOllamaHealth();
     if (!ollamaAvailable) {
       res.json({ success: true, data: aiResponse });

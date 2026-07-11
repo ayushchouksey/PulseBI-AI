@@ -1,5 +1,8 @@
 import { create } from "zustand";
-import type { DashboardJSON, ChatMessage, DatasetMetadata, FilterState, AnalysisResult } from "@pulsebi/shared-types";
+import type {
+  DashboardJSON, ChatMessage, DatasetMetadata, FilterState, AnalysisResult,
+  RecommendationResult, ExecutiveBrief, DecisionSupport, HighlightAction, ExplainResult,
+} from "@pulsebi/shared-types";
 
 interface AppState {
   datasetId: string | null;
@@ -13,10 +16,12 @@ interface AppState {
   isUploading: boolean;
   uploadProgress: number;
   newlyAddedChartId: string | null;
+  highlightedChartId: string | null;
 
   setDataset: (id: string, metadata: DatasetMetadata, dashboard: DashboardJSON) => void;
   updateDashboard: (patch: Partial<DashboardJSON>) => void;
   clearNewlyAddedChartId: () => void;
+  setHighlightedChartId: (id: string | null) => void;
   addChatMessage: (message: ChatMessage) => void;
   clearChat: () => void;
   setAnalysis: (analysis: AnalysisResult | null) => void;
@@ -43,6 +48,7 @@ const initialState = {
   isUploading: false,
   uploadProgress: 0,
   newlyAddedChartId: null,
+  highlightedChartId: null,
 };
 
 export const useAppStore = create<AppState>((set) => ({
@@ -63,6 +69,8 @@ export const useAppStore = create<AppState>((set) => ({
     }),
 
   clearNewlyAddedChartId: () => set({ newlyAddedChartId: null }),
+
+  setHighlightedChartId: (id) => set({ highlightedChartId: id }),
 
   addChatMessage: (message) =>
     set((state) => ({ chatMessages: [...state.chatMessages, message] })),

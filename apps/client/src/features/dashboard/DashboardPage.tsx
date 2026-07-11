@@ -11,9 +11,10 @@ import { Button } from "../../components/ui/Button";
 import { MessageSquare, Download, RefreshCw } from "lucide-react";
 
 export function DashboardPage() {
-  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId } = useAppStore();
+  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId, highlightedChartId } = useAppStore();
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
+  // Auto-scroll to newly added chart
   useEffect(() => {
     if (newlyAddedChartId) {
       const timer = setTimeout(() => {
@@ -28,6 +29,19 @@ export function DashboardPage() {
       return () => clearTimeout(timer);
     }
   }, [newlyAddedChartId, clearNewlyAddedChartId]);
+
+  // Auto-scroll to highlighted chart
+  useEffect(() => {
+    if (highlightedChartId) {
+      const timer = setTimeout(() => {
+        const el = chartRefs.current.get(highlightedChartId);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedChartId]);
 
   if (!dashboard) return null;
 
@@ -75,22 +89,35 @@ export function DashboardPage() {
 
         {/* Layer 1: Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {charts.slice(0, 6).map((chart) => (
-            <div
-              key={chart.id}
-              ref={(el) => { if (el) chartRefs.current.set(chart.id, el); }}
-            >
-              <Card padding="none" className="overflow-hidden animate-in">
-                <div className="px-6 pt-5 pb-2">
-                  <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
-                  <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
-                </div>
-                <div className="h-72">
-                  <ChartRenderer chart={chart} />
-                </div>
-              </Card>
-            </div>
-          ))}
+          {charts.slice(0, 6).map((chart) => {
+            const isHighlighted = highlightedChartId === chart.id;
+            const hasHighlight = highlightedChartId !== null;
+            const isFaded = hasHighlight && !isHighlighted;
+
+            return (
+              <div
+                key={chart.id}
+                ref={(el) => { if (el) chartRefs.current.set(chart.id, el); }}
+                className={`transition-all duration-500 ${
+                  isHighlighted
+                    ? "ring-3 ring-brand-400 ring-offset-2 scale-[1.02] shadow-lg"
+                    : isFaded
+                    ? "opacity-40 scale-[0.98]"
+                    : ""
+                }`}
+              >
+                <Card padding="none" className="overflow-hidden animate-in">
+                  <div className="px-6 pt-5 pb-2">
+                    <h3 className="text-sm font-semibold text-surface-900">{chart.title}</h3>
+                    <p className="text-xs text-surface-400 mt-0.5">{chart.description}</p>
+                  </div>
+                  <div className="h-72">
+                    <ChartRenderer chart={chart} />
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
         </div>
 
         {/* Layer 1: Insights */}
@@ -101,7 +128,7 @@ export function DashboardPage() {
           </div>
         )}
 
-        {/* Layer 2: AI Analysis Panel (transient) */}
+        {/* Layer 2: AI Analysis Panel (transient — all modes) */}
         <AnalysisPanel />
       </div>
 

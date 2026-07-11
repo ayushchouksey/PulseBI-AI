@@ -163,9 +163,17 @@ export interface DashboardJSON {
   insights: BusinessInsight[];
 }
 
-// ─── Three-Layer Architecture ────────────────────────────────────
+// ─── Five Operating Modes ────────────────────────────────────────
 
-export type IntentLevel = "information" | "analysis" | "dashboard_modification";
+export type IntentLevel =
+  | "information"       // Answer only — no dashboard change
+  | "analysis"          // Temporary analysis card + optional chart
+  | "recommendation"    // Business priorities + expected impact
+  | "executive_brief"   // CEO-style brief with metrics
+  | "decision_support"  // Data-backed decision with confidence
+  | "highlight"         // Highlight existing chart/widget
+  | "explain"           // Text-only explanation (no chart)
+  | "dashboard_modification"; // Permanent dashboard change
 
 export type IntentType =
   | "highest"
@@ -182,12 +190,12 @@ export type IntentType =
   | "explain"
   | "summary"
   | "recommendation"
+  | "executive_brief"
+  | "decision_support"
+  | "highlight"
   | "chart_add"
   | "chart_remove"
   | "chart_replace"
-  | "highlight"
-  | "sort_chart"
-  | "compare_dimension"
   | "kpi_add"
   | "kpi_remove"
   | "unknown";
@@ -204,6 +212,64 @@ export interface DetectedIntent {
   limit?: number;
 }
 
+// ─── Mode-Specific Response Types ────────────────────────────────
+
+export interface RecommendationResult {
+  title: string;
+  priorities: {
+    title: string;
+    description: string;
+    impact: "high" | "medium" | "low";
+    metric?: string;
+    currentValue?: string;
+  }[];
+  expectedImpact: "high" | "medium" | "low";
+  reasoning: string;
+}
+
+export interface ExecutiveBrief {
+  title: string;
+  metrics: {
+    label: string;
+    value: string;
+    change?: number;
+    direction?: "up" | "down" | "flat";
+  }[];
+  risks: string[];
+  opportunities: string[];
+  recommendation: string;
+}
+
+export interface DecisionSupport {
+  title: string;
+  question: string;
+  verdict: "yes" | "no" | "conditional";
+  confidence: "high" | "medium" | "low";
+  factors: {
+    label: string;
+    value: string;
+    change?: number;
+    direction?: "up" | "down" | "flat";
+  }[];
+  reasoning: string;
+}
+
+export interface HighlightAction {
+  chartId: string;
+  chartTitle: string;
+  highlightData?: { label: string; value: string }[];
+ Insight: string;
+}
+
+export interface ExplainResult {
+  title: string;
+  explanation: string;
+  causes: string[];
+  recommendation?: string;
+}
+
+// ─── Analysis & Response ─────────────────────────────────────────
+
 export interface AnalysisChart {
   id: string;
   chart: RecommendedChart;
@@ -215,6 +281,11 @@ export interface AIResponse {
   intent: DetectedIntent;
   answer: string;
   analysis?: AnalysisChart;
+  recommendation?: RecommendationResult;
+  executiveBrief?: ExecutiveBrief;
+  decisionSupport?: DecisionSupport;
+  highlight?: HighlightAction;
+  explain?: ExplainResult;
   dashboardPatch?: Partial<DashboardJSON>;
 }
 
@@ -225,6 +296,11 @@ export interface AnalysisResult {
   chart?: RecommendedChart;
   insights: BusinessInsight[];
   recommendations: string[];
+  recommendation?: RecommendationResult;
+  executiveBrief?: ExecutiveBrief;
+  decisionSupport?: DecisionSupport;
+  highlight?: HighlightAction;
+  explain?: ExplainResult;
   timestamp: string;
   pinned: boolean;
 }
