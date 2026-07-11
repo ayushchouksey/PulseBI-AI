@@ -12,7 +12,13 @@ import { MessageSquare, Download, Loader2, Upload, Sparkles } from "lucide-react
 import { exportChartToPDF, exportDashboardToPDF } from "../../utils/exportPdf";
 
 export function DashboardPage() {
-  const { dashboard, chatOpen, toggleChat, newlyAddedChartId, clearNewlyAddedChartId, highlightedChartId, reset } = useAppStore();
+  const dashboard = useAppStore((s) => s.dashboard);
+  const chatOpen = useAppStore((s) => s.chatOpen);
+  const toggleChat = useAppStore((s) => s.toggleChat);
+  const newlyAddedChartId = useAppStore((s) => s.newlyAddedChartId);
+  const clearNewlyAddedChartId = useAppStore((s) => s.clearNewlyAddedChartId);
+  const highlightedChartId = useAppStore((s) => s.highlightedChartId);
+  const reset = useAppStore((s) => s.reset);
   const chartRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [exportingAll, setExportingAll] = useState(false);
 

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { BusinessInsight } from "@pulsebi/shared-types";
 import { Card } from "../../components/ui/Card";
 import { AlertTriangle, TrendingUp, TrendingDown, Info } from "lucide-react";
@@ -14,7 +15,7 @@ const typeConfig = {
   info: { icon: Info, color: "text-info", bg: "bg-info-light", border: "border-info/20" },
 };
 
-export function InsightList({ insights }: InsightListProps) {
+export const InsightList = memo(function InsightList({ insights }: InsightListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {insights.map((insight, i) => {
@@ -41,4 +42,4 @@ export function InsightList({ insights }: InsightListProps) {
       })}
     </div>
   );
-}
+});

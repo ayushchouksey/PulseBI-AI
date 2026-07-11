@@ -4,7 +4,9 @@ import { Card } from "../../components/ui/Card";
 import { Sparkles } from "lucide-react";
 
 export function SummaryBar() {
-  const { datasetId, setPendingQuestion, openChat } = useAppStore();
+  const datasetId = useAppStore((s) => s.datasetId);
+  const setPendingQuestion = useAppStore((s) => s.setPendingQuestion);
+  const openChat = useAppStore((s) => s.openChat);
   const { data: summary, isLoading } = useSummary(datasetId);
 
   const handleSuggestionClick = (question: string) => {

@@ -1,7 +1,8 @@
-import html2canvas from "html2canvas-pro";
-import { jsPDF } from "jspdf";
-
 export async function exportChartToPDF(element: HTMLElement, title: string) {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
   const canvas = await html2canvas(element, {
     backgroundColor: "#ffffff",
     scale: 2,
@@ -47,6 +48,11 @@ export async function exportAnalysisPanelToPDF(question: string) {
   const panelEl = document.getElementById("analysis-panel-export");
   if (!panelEl) return;
 
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
+
   const canvas = await html2canvas(panelEl, {
     backgroundColor: "#ffffff",
     scale: 2,
@@ -86,6 +92,11 @@ export async function exportAnalysisPanelToPDF(question: string) {
 export async function exportDashboardToPDF(dashboardTitle: string) {
   const dashboardEl = document.getElementById("dashboard-content");
   if (!dashboardEl) return;
+
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import("html2canvas-pro"),
+    import("jspdf"),
+  ]);
 
   const canvas = await html2canvas(dashboardEl, {
     backgroundColor: "#f8fafc",

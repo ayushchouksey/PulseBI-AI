@@ -26,4 +26,15 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "plotly": ["react-plotly.js", "plotly.js"],
+          "pdf": ["html2canvas-pro", "jspdf"],
+          "vendor": ["react", "react-dom", "zustand", "@tanstack/react-query"],
+        },
+      },
+    },
+  },
 });

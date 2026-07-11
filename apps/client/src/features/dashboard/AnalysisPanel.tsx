@@ -21,7 +21,9 @@ const MODE_CONFIG = {
 } as const;
 
 export function AnalysisPanel() {
-  const { analysis, setAnalysis, pinAnalysisToDashboard } = useAppStore();
+  const analysis = useAppStore((s) => s.analysis);
+  const setAnalysis = useAppStore((s) => s.setAnalysis);
+  const pinAnalysisToDashboard = useAppStore((s) => s.pinAnalysisToDashboard);
   const [exporting, setExporting] = useState(false);
 
   if (!analysis) return null;

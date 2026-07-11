@@ -1,12 +1,14 @@
-import Plot from "react-plotly.js";
+import { memo, Suspense, lazy } from "react";
 import type { RecommendedChart } from "@pulsebi/shared-types";
+
+const Plot = lazy(() => import("react-plotly.js"));
 
 interface ChartRendererProps {
   chart: RecommendedChart;
   compact?: boolean;
 }
 
-export function ChartRenderer({ chart, compact }: ChartRendererProps) {
+export const ChartRenderer = memo(function ChartRenderer({ chart, compact }: ChartRendererProps) {
   const config = chart.config;
 
   switch (chart.type) {
@@ -25,7 +27,7 @@ export function ChartRenderer({ chart, compact }: ChartRendererProps) {
     default:
       return renderBarChart(chart, config, compact);
   }
-}
+});
 
 // ─── Data normalization helpers ───────────────────────────────────
 

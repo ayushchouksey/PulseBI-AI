@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Card } from "../ui/Card";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { classNames } from "@pulsebi/shared-utils";
@@ -8,7 +9,7 @@ interface MetricCardProps {
   index?: number;
 }
 
-export function MetricCard({ kpi, index = 0 }: MetricCardProps) {
+export const MetricCard = memo(function MetricCard({ kpi, index = 0 }: MetricCardProps) {
   const trendIcon = {
     up: TrendingUp,
     down: TrendingDown,
@@ -52,4 +53,4 @@ export function MetricCard({ kpi, index = 0 }: MetricCardProps) {
       </div>
     </Card>
   );
-}
+});

@@ -8,7 +8,7 @@ import { useAppStore } from "../stores/appStore";
 
 export function LandingPage() {
   const uploadMutation = useUploadCSV();
-  const { setUploading } = useAppStore();
+  const setUploading = useAppStore((s) => s.setUploading);
   const [dragActive, setDragActive] = useState(false);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {

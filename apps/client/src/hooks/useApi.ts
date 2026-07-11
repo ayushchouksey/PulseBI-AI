@@ -3,7 +3,9 @@ import { uploadCSV, getDashboard, askQuestion, getSummary } from "../services/ap
 import { useAppStore } from "../stores/appStore";
 
 export function useUploadCSV() {
-  const { setDataset, setUploading, setUploadProgress } = useAppStore();
+  const setDataset = useAppStore((s) => s.setDataset);
+  const setUploading = useAppStore((s) => s.setUploading);
+  const setUploadProgress = useAppStore((s) => s.setUploadProgress);
 
   return useMutation({
     mutationFn: (file: File) => {
@@ -21,7 +23,11 @@ export function useUploadCSV() {
 }
 
 export function useAskQuestion() {
-  const { datasetId, addChatMessage, setAnalysis, updateDashboard, setHighlightedChartId } = useAppStore();
+  const datasetId = useAppStore((s) => s.datasetId);
+  const addChatMessage = useAppStore((s) => s.addChatMessage);
+  const setAnalysis = useAppStore((s) => s.setAnalysis);
+  const updateDashboard = useAppStore((s) => s.updateDashboard);
+  const setHighlightedChartId = useAppStore((s) => s.setHighlightedChartId);
 
   return useMutation({
     mutationFn: (question: string) => {

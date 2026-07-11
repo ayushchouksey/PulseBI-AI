@@ -33,7 +33,11 @@ const SUGGESTIONS = [
 ];
 
 export function ChatPanel() {
-  const { chatMessages, toggleChat, pendingQuestion, setPendingQuestion, clearChat } = useAppStore();
+  const chatMessages = useAppStore((s) => s.chatMessages);
+  const toggleChat = useAppStore((s) => s.toggleChat);
+  const pendingQuestion = useAppStore((s) => s.pendingQuestion);
+  const setPendingQuestion = useAppStore((s) => s.setPendingQuestion);
+  const clearChat = useAppStore((s) => s.clearChat);
   const [input, setInput] = useState("");
   const askMutation = useAskQuestion();
   const messagesEndRef = useRef<HTMLDivElement>(null);
